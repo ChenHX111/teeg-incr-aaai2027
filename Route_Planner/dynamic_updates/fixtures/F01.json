@@ -1,0 +1,104 @@
+{
+  "description": "Route R with 2 trips T1 (09:00-09:05 A->B) and T2 (09:10-09:15 A->B). Delay T1 by 3 min.",
+  "edit": {
+    "edits": [
+      {
+        "delta_min": 3,
+        "edit_type": "DELAY",
+        "trip_id": "T1"
+      }
+    ],
+    "intensity": 1,
+    "scenario": "DELAY",
+    "seed": 1
+  },
+  "expected_post_edit": {
+    "queries": [
+      {
+        "dst": 1,
+        "expected_arrival": 8,
+        "note": "T1 was 5min; now T1 starts at 3min and arrives 8min.",
+        "q_id": 1,
+        "src": 0,
+        "t_dep": 0
+      },
+      {
+        "dst": 1,
+        "expected_arrival": 15,
+        "note": "T1 dep=3<6 missed; take T2 dep=10 arr=15",
+        "q_id": 2,
+        "src": 0,
+        "t_dep": 6
+      }
+    ]
+  },
+  "fixture_id": "F01",
+  "footpaths": [],
+  "routes": [
+    {
+      "mode": "bus",
+      "route_id": "R1",
+      "route_int": 0
+    }
+  ],
+  "service_window": {
+    "t_hi": 60,
+    "t_lo": 0
+  },
+  "stops": [
+    {
+      "stop_id": "A",
+      "stop_int": 0,
+      "stop_lat": 51.5,
+      "stop_lon": -0.1
+    },
+    {
+      "stop_id": "B",
+      "stop_int": 1,
+      "stop_lat": 51.51,
+      "stop_lon": -0.1
+    }
+  ],
+  "trips": [
+    {
+      "route_id": "R1",
+      "stop_times": [
+        {
+          "arrival_minute": -1,
+          "departure_minute": 0,
+          "stop_id": "A",
+          "stop_int": 0,
+          "stop_sequence": 0
+        },
+        {
+          "arrival_minute": 5,
+          "departure_minute": 5,
+          "stop_id": "B",
+          "stop_int": 1,
+          "stop_sequence": 1
+        }
+      ],
+      "trip_id": "T1"
+    },
+    {
+      "route_id": "R1",
+      "stop_times": [
+        {
+          "arrival_minute": -1,
+          "departure_minute": 10,
+          "stop_id": "A",
+          "stop_int": 0,
+          "stop_sequence": 0
+        },
+        {
+          "arrival_minute": 15,
+          "departure_minute": 15,
+          "stop_id": "B",
+          "stop_int": 1,
+          "stop_sequence": 1
+        }
+      ],
+      "trip_id": "T2"
+    }
+  ]
+}

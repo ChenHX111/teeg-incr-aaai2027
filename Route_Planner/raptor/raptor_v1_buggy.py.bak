@@ -1,0 +1,121 @@
+"""Round-based RAPTOR algorithm.
+
+Delling, Pajor, Werneck. *Round-based Public Transit Routing.* Trans. Sci. 2015.
+
+Standard earliest-arrival RAPTOR with K rounds. Two label arrays per round are
+maintained:
+  tau_best[s] : best arrival across all rounds (monotone non-increasing)
+  tau_prev[s] : best arrival in the previous round (used as the boarding bound
+                in the current round to avoid self-improvement)
+"""
+from __future__ import annotations
+import numpy as np
+from ..common import TimetableBundle
+
+INF = 32_000
+
+
+def raptor_earliest_arrival(b: TimetableBundle, source: int, dest: int, t_dep: int,
+                            max_rounds: int = 8) -> int | None:
+    routes_array  = b.routes_array
+    route_stops   = b.route_stops
+    stop_routes   = b.stop_routes
+    stops_array   = b.stops_array
+    transfer_arr  = b.transfer_array
+    st_min        = b.stop_times_min            # (Nst, 2): arr_min, dep_min, -1 = NaT
+
+    S = b.n_stops
+
+    tau_best = np.full(S, INF, dtype=np.int32)
+    tau_prev = np.full(S, INF, dtype=np.int32)
+    marked   = np.zeros(S, dtype=bool)
+
+    # --- initialisation
+    tau_best[source] = t_dep
+    tau_prev[source] = t_dep
+    marked[source]   = True
+    lo, hi = int(stops_array[source, 2]), int(stops_array[source, 3])
+    for k in range(lo, hi):
+        v   = int(transfer_arr[k, 0])
+        wsec= int(transfer_arr[k, 1])
+        wmin= max(1, (wsec + 59) // 60) if wsec > 0 else 0
+        nt  = t_dep + wmin
+        if nt < tau_best[v]:
+            tau_best[v] = nt
+            tau_prev[v] = nt
+            marked[v]   = True
+
+    for round_no in range(1, max_rounds + 1):
+        # --- step 1: collect (route, earliest_marked_position) for routes that touch marked stops
+        queue: dict[int, int] = {}
+        marked_stops = np.where(marked)[0]
+        if len(marked_stops) == 0:
+            break
+        for s in marked_stops:
+            srlo, srhi = int(stops_array[s, 0]), int(stops_array[s, 1])
+            for j in range(srlo, srhi):
+                r = int(stop_routes[j])
+                rs_off = int(routes_array[r, 2])
+                n_st   = int(routes_array[r, 1])
+                pos = -1
+                for i in range(n_st):
+                    if int(route_stops[rs_off + i]) == int(s):
+                        pos = i; break
+                if pos == -1:
+                    continue
+                if (r not in queue) or (pos < queue[r]):
+                    queue[r] = pos
+        marked.fill(False)
+
+        # --- step 2: scan each route from its earliest marked position
+        for r, start_pos in queue.items():
+            n_st  = int(routes_array[r, 1])
+            n_tr  = int(routes_array[r, 0])
+            rs_off = int(routes_array[r, 2])
+            st_off = int(routes_array[r, 3])
+            t_idx = -1                # no trip boarded yet
+            for i in range(start_pos, n_st):
+                stop_i = int(route_stops[rs_off + i])
+                # if on a trip, update tau_best at stop_i using arrival time
+                if t_idx >= 0:
+                    a = int(st_min[st_off + t_idx * n_st + i, 0])
+                    if a >= 0 and a < tau_best[stop_i] and a < tau_best[dest]:
+                        tau_best[stop_i] = a
+                        marked[stop_i] = True
+                # check if we can catch an earlier trip at stop_i using tau_prev[stop_i]
+                bound = int(tau_prev[stop_i])
+                if bound < INF:
+                    # If we already have a trip, only switch to an earlier trip whose dep at
+                    # stop_i is >= bound (strict earlier index).
+                    if t_idx == -1 or int(st_min[st_off + t_idx * n_st + i, 1]) > bound:
+                        # binary search for first trip with dep_min at this stop >= bound
+                        lo_t, hi_t = 0, n_tr
+                        while lo_t < hi_t:
+                            mid = (lo_t + hi_t) // 2
+                            d = int(st_min[st_off + mid * n_st + i, 1])
+                            if d >= 0 and d >= bound:
+                                hi_t = mid
+                            else:
+                                lo_t = mid + 1
+                        if lo_t < n_tr and int(st_min[st_off + lo_t * n_st + i, 1]) >= 0:
+                            if t_idx == -1 or lo_t < t_idx:
+                                t_idx = lo_t
+
+        # --- step 3: footpath relaxation
+        for s in np.where(marked)[0].copy():
+            tau_s = int(tau_best[s])
+            lo, hi = int(stops_array[s, 2]), int(stops_array[s, 3])
+            for k in range(lo, hi):
+                v    = int(transfer_arr[k, 0])
+                wsec = int(transfer_arr[k, 1])
+                wmin = max(1, (wsec + 59) // 60) if wsec > 0 else 0
+                nt   = tau_s + wmin
+                if nt < tau_best[v]:
+                    tau_best[v] = nt
+                    marked[v]   = True
+
+        # snapshot for next round's boarding bound
+        tau_prev = tau_best.copy()
+
+    return int(tau_best[dest]) if tau_best[dest] < INF else None
+

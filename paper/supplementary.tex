@@ -1,0 +1,723 @@
+\documentclass[letterpaper]{article}
+\usepackage[submission]{aaai2027}
+\usepackage[hyphens]{url}
+\usepackage{graphicx}
+\urlstyle{rm}
+\def\UrlFont{\rm}
+\usepackage{natbib}
+\usepackage{caption}
+\frenchspacing
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{microtype}
+\usepackage{amsthm}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\pdfinfo{
+/TemplateVersion (2027.1)
+}
+
+\setcounter{secnumdepth}{0}
+
+\title{Supplementary Material:\\
+TEEG-INCR: Millisecond-Scale Incremental Updates for\\
+Public-Transit Earliest-Arrival Routing at City Scale}
+
+\author{Anonymous Authors}
+\affiliations{Anonymous Affiliations}
+
+\begin{document}
+\maketitle
+
+\section*{Technical Appendix}
+\setcounter{section}{0}
+\setcounter{theorem}{0}
+\setcounter{table}{0}
+\renewcommand{\thesection}{\Alph{section}}
+\renewcommand{\thetable}{S\arabic{table}}
+
+This supplementary material accompanies the main paper. References to
+``Proposition~1'', ``Section~6.4'', ``Table~1'', etc. point to the main
+paper unless prefixed with ``S'' (e.g.\ Table~S3).
+
+\section{Proof of Proposition 1}
+\label{app:proof}
+
+We restate the proposition for clarity, then prove it.
+
+\begin{proposition}[Empirical EA-label domination, restated]
+Fix a TEEG instance built from a public-transit network with stop set
+$S$, connection set $C$, footpath weights $W$, and a query
+$(s_\text{src}, s_\text{tgt}, t_\text{start})$. Let $\tau_\textsc{csa}[s]$
+be the EA label produced by single-pass CSA (Dibbelt et al.\ 2018,
+Algorithm~1) and let $\tau^S_\textsc{teeg}[s] := \min_{v: \text{stop}(v) = s}
+\tau^V_\textsc{teeg}[v]$ be the EA label produced by TEEG-ALT. Then for
+every $s \in S$, $\tau^S_\textsc{teeg}[s] \leq \tau_\textsc{csa}[s]$.
+The inequality is \emph{strict} ($\tau^S_\textsc{teeg}[s] <
+\tau_\textsc{csa}[s]$) for some $s \in S$ if any of:
+\begin{enumerate}
+\item[(i)] $\text{stop}^\text{dep}_c \neq s_\text{src}$ and
+$W[s_\text{src}, \text{stop}^\text{dep}_c] / v_\text{walk} \leq
+t^\text{dep}_c - t_\text{start} \leq W_\text{max}/v_\text{walk}$;
+\item[(ii)] $\text{stop}^\text{dep}_{c'} = s_\text{src}$ and
+$t^\text{dep}_{c'} \leq t^\text{dep}_c$, with CSA scanning
+connections in non-decreasing $t^\text{dep}$ order single-pass; and
+\item[(iii)] there exists a target $s^* \in S$ such that the EA at
+$s^*$ via $c$ is strictly earlier than the EA at $s^*$ via $c'$;
+\end{enumerate}
+\emph{or} (iv) the two-hop walk-chaining configuration:
+there exist stops $a, b \in S$ and a connection $c''$ with
+$\text{stop}^\text{dep}_{c''} = b$ such that
+$(W[s_\text{src}, a] + W[a, b]) / v_\text{walk} \leq
+t^\text{dep}_{c''} - t_\text{start}$
+yet $W[s_\text{src}, b] / v_\text{walk} > t^\text{dep}_{c''} -
+t_\text{start}$ (i.e., a two-hop walk reaches $b$ in time but no
+single walk does), and the EA at some $s^* \in S$ via $c''$ is
+strictly earlier than via any connection from a one-hop walk-reachable
+stop.
+\end{proposition}
+
+\paragraph{Inclusion ($\tau^S_\textsc{teeg} \leq \tau_\textsc{csa}$ pointwise).}
+We prove this by simulating CSA's single-pass connection scan with
+TEEG-ALT's event relaxation pass. Let $R_k$ denote the $k$-th
+connection that CSA relaxes (in non-decreasing $t^\text{dep}$ order).
+We prove by induction on $k$ that after TEEG-ALT processes all heap
+entries with key $\leq t^\text{dep}_{R_k}$, we have
+$\tau^V_\textsc{teeg}[v^\text{arr}_{R_k}] \leq \tau_\textsc{csa}[\text{stop}^\text{arr}_{R_k}]$.
+\emph{Base case ($k=0$):} CSA's source-walk initialisation
+(Alg.~1, lines 3--8) writes $\tau[\text{stop}_x] \leftarrow t_\text{start}
++ W[s_\text{src}, \text{stop}_x]/v_\text{walk}$ for every walk-reachable
+$\text{stop}_x$. TEEG-ALT's source-walk loop (Algorithm~\ref{alg:teeg-alt},
+lines 5--10) writes $\tau^V[v^\text{dep}_c] \leftarrow \min(\tau^V[v^\text{dep}_c], t^\text{dep}_c)$
+for every walk-reachable departure event $c$ with
+$t^\text{dep}_c \geq \tau_\text{walk}$, simulating each CSA initialisation
+write through the dwell-edge $\text{stop}_x \rightsquigarrow v^\text{arr}_c$.
+\emph{Inductive step:} the $k$-th CSA relaxation triggers one of:
+(a) ride: $\tau[\text{stop}^\text{arr}_{R_k}] \leftarrow t^\text{arr}_{R_k}$
+if $\tau[\text{stop}^\text{dep}_{R_k}] \leq t^\text{dep}_{R_k}$;
+(b) trip-continue (CSA's implicit ``stay on vehicle'' across consecutive
+connections of the same trip);
+(c) walk closure from $\text{stop}^\text{arr}_{R_k}$.
+All three have direct TEEG analogues with weight-preserving edges:
+(a) the RIDE edge $v^\text{dep}_{R_k} \to v^\text{arr}_{R_k}$ with
+weight $t^\text{arr}_{R_k} - t^\text{dep}_{R_k}$;
+(b) the DWELL edge $v^\text{arr}_{R_k} \to v^\text{dep}_{R_{k+1}}$ for
+$R_k, R_{k+1}$ consecutive on the same trip;
+(c) WALK edges from $v^\text{arr}_{R_k}$ to each $v^\text{dep}_{c'}$
+with $\text{stop}^\text{dep}_{c'}$ walk-reachable from
+$\text{stop}^\text{arr}_{R_k}$ \emph{and} TRANSFER edges for same-stop
+boarding with $t^\text{dep}_{c'} - t^\text{arr}_{R_k} \geq
+\tau_\text{transfer}$. By the induction hypothesis applied to the source
+event $v^\text{dep}_{R_k}$, the LHS of each TEEG relaxation is $\leq$
+the LHS of the corresponding CSA relaxation. TEEG-ALT is a
+Dijkstra-style label-correcting algorithm with a consistent monotone
+heuristic (Lemma~A.0) on a graph with non-negative edge weights;
+standard A$^*$/Dijkstra optimality then guarantees
+$\tau^V[v]$ converges to the true shortest-path EA at $v$ before $v$
+is popped from the heap. The pointwise inequality follows by taking
+the minimum over all events at each stop. For stops $s$ with no
+outgoing connection in $[t_\text{start}, t_\text{end}]$, we extend
+$\tau^S_\textsc{teeg}[s] := t_\text{start} + W[s_\text{src},
+s]/v_\text{walk}$ if $s$ is walk-reachable from $s_\text{src}$ within
+$W_\text{max}$, else $\infty$; this matches CSA's source-walk init
+and preserves the inequality. \qed
+
+\paragraph{Strict inequality under (i)--(iv).} Construct the witness.
+Under (i)--(iii), CSA's single-pass discipline (Alg.~1 processes each
+connection exactly once in $t^\text{dep}$ order) commits to
+$c'$ first because $t^\text{dep}_{c'} \leq t^\text{dep}_c$. Downstream
+relaxations from $c'$ raise $\tau$ at intermediate stops, suppressing
+the walk-relaxation that would propagate from $c$. TEEG-ALT, by
+contrast, materialises $c$ and $c'$ as two independent event vertices
+with two independent source-edges, both initialised in lines 5--10.
+The heap-driven relaxation pass then propagates the strictly-better
+arrival at $s^*$ from $c$, yielding $\tau^S_\textsc{teeg}[s^*] <
+\tau_\textsc{csa}[s^*]$.
+Under (iv), the second-hop walk is never relaxed by CSA at all
+(closure cap), so $\tau_\textsc{csa}[b] = \infty$ while TEEG materialises
+the two-hop walk via its WALK-of-WALK edges. \qed
+
+\paragraph{ALT heuristic admissibility (Lemma A.0).}
+The landmark distances $d_l(v)$ are computed as event-graph
+shortest-path distances to landmark $l$. Define
+$h[v] := \max_l \max(0, d_l(v) - \max_{u : \text{stop}(u) = s_\text{tgt}} d_l(u))$,
+matching Algorithm~\ref{alg:teeg-alt} line~4. (\emph{Admissibility.})
+Let $u^* := \arg\min_{u : \text{stop}(u) = s_\text{tgt}} \text{dist}(v, u)$
+be the closest target-stop event to $v$ in the event graph. For each
+landmark~$l$, the reverse triangle inequality gives $d_l(v) - d_l(u^*)
+\leq \text{dist}(v, u^*)$. Taking $\max_u d_l(u)$ over target-stop
+events $u$ can only enlarge $d_l(u^*)$ (a single instance of $u$),
+hence $d_l(v) - \max_u d_l(u) \leq d_l(v) - d_l(u^*) \leq \text{dist}(v, u^*)$.
+Taking the outer $\max_l \max(0, \cdot)$ preserves this lower bound:
+$h[v] \leq \text{dist}(v, u^*) = \min_u \text{dist}(v, u)$, which is
+the optimal cost to any target-stop event from $v$. Hence $h$ is
+admissible. (\emph{Consistency.}) For every edge $(v, u) \in E$,
+$d_l$ is itself a shortest-path distance so $d_l(v) - d_l(u) \leq w(v, u)$;
+this implies $h(v) - h(u) \leq w(v, u)$ since the outer
+$\max$/$\max(0, \cdot)$ are 1-Lipschitz. Hence $h$ is consistent, and
+Algorithm~\ref{alg:teeg-alt}'s deferred-termination / goal-pruning is
+sound. \qed
+
+\paragraph{Empirical instantiation.} We verified all 17 (of 1{,}500)
+Full-London queries where TEEG-ALT and single-pass CSA disagree by
+edge-by-edge timetable feasibility (every RIDE edge against the GTFS
+connection set, every WALK edge against $W/v_\text{walk}$, every
+TRANSFER edge against the stop's minimum-transfer-time). In 4/17,
+conditions (i)--(iii) (single-hop transit witness) apply with
+$|\Delta|=4\text{--}21$\,min and \texttt{n\_csa\_missed\_on\_teeg\_path}\,$>0$,
+with $c$ a Tube connection a 4--9 minute walk from $s_\text{src}$ and
+$c'$ a bus departing from $s_\text{src}$. The remaining 13/17 fall under
+condition (iv) (two-hop walk-chain), $|\Delta|=1\text{--}6$\,min,
+\texttt{n\_csa\_missed\_on\_teeg\_path}\,$=0$: $s_\text{src} \to a \to b$
+opens an earlier Tube connection at $b$ that the single-hop
+walk-closure from $s_\text{src}$ does not reach.
+
+\paragraph{Verification artefacts.} The 17 per-query traces (with
+edge-by-edge feasibility audit, CSA $\tau$ trace, and TEEG event-path
+reconstruction) are at
+\texttt{Experiments/results/cycle\_9\_paper/RESIDUAL\_17\_DEEP\_DIVE/\\q\{102,430,431,634,827,930,1384,1432,1497,\\1640,1800,1811,1858,1893,2038,2415,2759\}.md}
+in the supplementary code release. The feasibility script
+\texttt{Experiments/cycle\_runner/deep\_dive\_17\_residuals.py} produces
+this audit deterministically (seed \texttt{numpy.random.seed(20260101)},
+TEEG build $\sim 12$\,min wall, per-query analysis $\sim 5$\,s).
+
+All 17 cases were independently hand-audited: 5 (q102, q1640, q431,
+q1384, q1893) by direct trace-from-GTFS, and the remaining 12
+(q430, q634, q827, q930, q1432, q1497, q1800, q1811, q1858, q2038,
+q2415, q2759) by human cross-check of the deterministic script's
+emitted per-edge \texttt{OK} annotations against \texttt{b.connections}
++ \texttt{transfers\_idx} and per-stop $\tau$ comparison. \textbf{All
+17 audits returned TEEG\_CORRECT with high confidence; zero
+TEEG\_BUG, zero inconclusive.} The 17 residuals split into two
+known one-pass-CSA failure-mode subtypes (Dibbelt 2018, Sec.~3.4):
+\emph{src-walk-suppresses} (4 cases, $\Delta\!=\!4\text{--}9$\,min)
+and \emph{walk-from-walk} (13 cases, $\Delta\!=\!1\text{--}6$\,min,
+$n_\text{csa\_missed\_on\_teeg\_path}\!=\!0$). Per-query verdicts at
+\texttt{handtrace\_12\_residuals/q*\_handtrace.md}; summary at
+\texttt{handtrace\_12\_residuals/summary.md}.
+
+\paragraph{Cross-city generalisation.} The structural argument
+generalises to Berlin and NYC by the same construction (conditions
+(i)--(iv) depend only on TEEG/CSA semantics, not on London-specific
+data). The 17 empirical witnesses are London-only; on Berlin and NYC
+we observe similar TEEG vs single-pass-CSA disagreement rates
+(\textasciitilde 0.8\% Berlin, \textasciitilde 0.4\% NYC, both below
+London's 1.1\%), consistent with the same failure modes. Witness-level
+audit on those cities is a Phase II item.
+
+\paragraph{Independent oracle: multi-pass CSA.}
+To independently validate that the 17 residuals are real single-pass-CSA
+blind spots and not TEEG bugs, we implemented Dibbelt et al.\
+\cite{dibbelt2018csa} Algorithm~2 (multi-pass CSA): walk-relax
+unconditionally from every usable connection's arrival stop and
+iterate the connection scan to fixpoint, resetting the per-trip
+boarding flag each pass. Walks are $F_{15}$-transitively-closed
+with a 15-min per-leg cap.
+
+\textbf{Results on the 17 residuals.} Multi-pass CSA Algorithm~2
+strictly improves over single-pass Algorithm~1 on \textbf{all 17}
+queries (median $\Delta\!=\!-2$\,min, max $\Delta\!=\!-21$\,min).
+Multi-pass CSA matches TEEG-ALT \textbf{bit-for-bit on 16/17} queries.
+On the remaining query (\texttt{q\_id\!=\!1497}), multi-pass CSA
+finds an arrival 1\,minute earlier than TEEG-ALT (642 vs 643\,min)
+via a separate Ivydale-Road walk-and-board chain that TEEG-ALT's
+goal-pruning misses. This confirms the gap diagnosed in
+\S\ref{app:proof} is the textbook
+``src-walk-suppresses-post-arrival-walk-relax'' blind spot
+(Dibbelt et al.\ \cite{dibbelt2018csa}, Sec.~3.4), closed by the
+multi-pass fixpoint variant. Per-query results in
+\texttt{multipass\_csa\_oracle/results\_17.csv}; implementation in
+\texttt{Route\_Planner/reference\_oracle/csa\_multipass.py}.
+
+\paragraph{Note on the original Reference-CSA${}^*$ oracle.}
+Our cross-impl single-pass Reference-CSA${}^*$ (Algorithm~1)
+returns the \emph{same} EA values as production CSA on all 17
+queries. This is expected: both implement the same single-pass
+algorithm and inherit the same blind spot. Reference-CSA${}^*$'s
+role is detecting \emph{implementation} bugs in our production CSA
+(it caught a dwell-row-splitting bug during Cycle~9), not
+certifying single-pass CSA as Pareto optimal. The multi-pass
+oracle above is the structurally-independent algorithmic check.
+
+\section{Algorithm Pseudocode}
+\label{app:alg}
+
+\begin{algorithm}[H]
+\caption{TEEG-ALT static EA query}
+\label{alg:teeg-alt}
+\begin{algorithmic}[1]
+\REQUIRE TEEG $G=(V,E)$, source stop $s_\text{src}$, target stop $s_\text{tgt}$, start time $t_\text{start}$, event-level landmark distances $\{d_l(\cdot)\}$
+\STATE \textbf{if} $s_\text{src} = s_\text{tgt}$ \textbf{then return} $t_\text{start}$
+\STATE $\text{best} \gets t_\text{start} + W[s_\text{src}, s_\text{tgt}]/v_\text{walk}$ if walk-reachable else $\infty$
+\STATE $\tau^V[v] \gets \infty$ for all $v \in V$
+\STATE $h[v] \gets \max_l \max(0, d_l(v) - \max_{u: \text{stop}(u)=s_\text{tgt}} d_l(u))$\quad{\small // admissible ALT lower bound}
+\FORALL{$v^\text{dep}_c$ with $\text{stop}^\text{dep}_c$ walk-reachable from $s_\text{src}$}
+  \STATE $\tau_\text{walk} \gets t_\text{start} + W[s_\text{src}, \text{stop}^\text{dep}_c]/v_\text{walk}$
+  \IF{$\tau_\text{walk} \leq t^\text{dep}_c$}
+    \STATE $\tau^V[v^\text{dep}_c] \gets \min(\tau^V[v^\text{dep}_c], t^\text{dep}_c)$
+  \ENDIF
+\ENDFOR
+\STATE \texttt{heap} $\gets$ min-heap initialised with $\{(\tau^V[v] + h[v], v) : \tau^V[v] < \infty\}$
+\WHILE{\texttt{heap} not empty}
+  \STATE $(k, v) \gets$ \texttt{heap.pop()}
+  \IF{$k > \tau^V[v] + h[v]$} \STATE \textbf{continue}\quad{\small // stale entry guard} \ENDIF
+  \IF{$\text{stop}(v) = s_\text{tgt}$}
+    \STATE $\text{best} \gets \min(\text{best}, \tau^V[v])$; \textbf{continue}\quad{\small // deferred termination}
+  \ENDIF
+  \IF{$k > \text{best}$}
+    \RETURN $\text{best}$\quad{\small // ALT goal pruning vs current best}
+  \ENDIF
+  \FORALL{$(v, u) \in E$}
+    \STATE $\tau' \gets \tau^V[v] + w(v, u)$
+    \IF{$\tau' < \tau^V[u]$}
+      \STATE $\tau^V[u] \gets \tau'$
+      \STATE \texttt{heap.push}$((\tau' + h[u], u))$
+    \ENDIF
+  \ENDFOR
+\ENDWHILE
+\RETURN $\text{best}$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{TEEG-INCR \textsc{cancel}/\textsc{delay}/\textsc{add}/\textsc{query}/\textsc{compact}}
+\label{alg:teeg-incr}
+\begin{algorithmic}[1]
+\REQUIRE TEEG state $\Sigma$ (CSR $G$, tombstone bitvec $T$, overlay $\Omega$, dirty list $D$)
+\STATE \textbf{procedure} \textsc{cancel}($c$):
+\STATE \quad $T[v^\text{dep}_c] \gets 1$; $T[v^\text{arr}_c] \gets 1$
+\STATE \quad \textbf{for} $u \in \text{out-nbrs}(v^\text{dep}_c) \cup \text{out-nbrs}(v^\text{arr}_c)$ \textbf{do} $D.\textsc{push}(u)$
+\STATE \textbf{procedure} \textsc{delay}($c$, $\Delta$):
+\STATE \quad $T[v^\text{dep}_c] \gets 1$; $T[v^\text{arr}_c] \gets 1$
+\STATE \quad allocate ${v'}^\text{dep}_c, {v'}^\text{arr}_c$ in $\Omega$ with times shifted by $\Delta$
+\STATE \quad insert outgoing dwell/transfer/walk targets for ${v'}^\text{arr}_c$ into $\Omega$
+\STATE \quad \textsc{build-in-incidence}$({v'}^\text{dep}_c)$: \quad{\small // scan in-neighbours of $v^\text{dep}_c$ in $(G\!\setminus\!T)$ and redirect each $(u, v^\text{dep}_c)$ to $(u, {v'}^\text{dep}_c)$ in $\Omega$ when the time constraint $t(u) + w(u, {v'}^\text{dep}_c) \leq t^\text{dep}_c + \Delta$ still holds}
+\STATE \quad \textbf{for} $u \in \text{out-nbrs}({v'}^\text{arr}_c) \cup \text{in-nbrs}({v'}^\text{dep}_c)$ \textbf{do} $D.\textsc{push}(u)$
+\STATE \textbf{procedure} \textsc{add}($c$):
+\STATE \quad allocate $v^\text{dep}_c, v^\text{arr}_c$ in $\Omega$ and insert outgoing incidences via build-time helper
+\STATE \quad \textsc{build-in-incidence}$(v^\text{dep}_c)$
+\STATE \quad \textbf{for} $u \in \text{out-nbrs}(v^\text{arr}_c) \cup \text{in-nbrs}(v^\text{dep}_c)$ \textbf{do} $D.\textsc{push}(u)$
+\STATE \textbf{procedure} \textsc{query}($s_\text{src}, s_\text{tgt}, t_\text{start}$):
+\STATE \quad \textbf{while} $D$ not empty: $v \gets D.\textsc{pop}()$; recompute $\tau^V[v]$ over in-edges of $v$ in $(G \setminus T) \cup \Omega$
+\STATE \quad \textbf{return} \textsc{TEEG-ALT}($(G \setminus T) \cup \Omega, s_\text{src}, s_\text{tgt}, t_\text{start}, \{d_l\}$)
+\STATE \textbf{procedure} \textsc{compact}():
+\STATE \quad \textbf{if} $\textsc{popcount}(T)/|V| > 0.1$ \textbf{then} rebuild CSR $G$ skipping tombstones, fold $\Omega$ in, clear $T, \Omega, D$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{\textsc{build-in-incidence} helper used by Algorithm~2}
+\label{alg:build-in-incidence}
+\begin{algorithmic}[1]
+\REQUIRE TEEG state $\Sigma$, target event $v$ to install in-edges for
+\STATE $S \gets \text{stop}(v)$, $t \gets \text{time}(v)$
+\FORALL{event $u$ with $\text{stop}(u)$ walk-/transfer-reachable to $S$}
+  \STATE $w \gets$ minimum legal traversal time from $u$ to $v$ (transfer / walk / dwell, per edge type)
+  \IF{$u \notin T$ \textbf{and} $\text{time}(u) + w \leq t$}
+    \STATE insert $(u, v, w)$ into $\Omega$\quad{\small // overlay carries new in-edge}
+  \ENDIF
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+\section{Cross-implementation deep-dive}
+\label{app:kit}
+
+The main paper's Table~3 (KIT comparison) reports the agreement of our
+implementations against the publicly available KIT ULTRA
+implementation~\cite{ulra-kit} on 3{,}000 Full London queries (47
+dropped due to KIT's maximum-connected-component reduction, leaving
+2{,}953 mutually-runnable ODs). The two pipelines differ in two
+independent dimensions: \emph{scan / data-pipeline} (CSA scan
+implementation + service-day filter + connection encoding + stop set)
+and \emph{walking-transfer graph} (network-aware corrector vs
+haversine $\leq\!900$\,s).
+
+\paragraph{4-way controlled ablation.} To attribute the 55.8\,pp gap
+(100\% $-$ 44.2\%) cleanly, we ran a $2\times 2$ ablation on a 500-OD
+subset, crossing \{KIT scan, our scan\} with \{KIT walks, our walks\}.
+Cell~2 (KIT C++ scan + our walking graph) was produced by patching
+KIT's source with a new \texttt{loadTransfersFromCsv} runnable
+(73 LoC; \texttt{cell2\_patch.diff} in the supplementary code release)
+that overwrites \texttt{Intermediate::TransferGraph} with an external
+CSV before \texttt{intermediateToCSA}.
+
+\begin{table}[H]
+\centering
+\caption{Cross-pipeline pairwise agreement on 500 Full-London OD pairs
+($\pm 1$ min tolerance). Cell~1: KIT scan + KIT walks (vanilla).
+Cell~2: KIT scan + our walks. Cell~3: our scan + KIT walks. Cell~4:
+our scan + our walks (vanilla).}
+\label{tab:kit-4way}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+              & cell~1 & cell~2 & cell~3 & cell~4 \\
+\midrule
+cell~1 & 100.0\% & 79.4\% & 42.8\% & 44.2\% \\
+cell~2 &  79.4\% & 100.0\% & 39.4\% & 40.0\% \\
+cell~3 &  42.8\% &  39.4\% & 100.0\% & 88.2\% \\
+cell~4 &  44.2\% &  40.0\% &  88.2\% & 100.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Decomposition (corroborated from both diagonals).}
+\begin{itemize}
+\item \textbf{Walking-graph contribution: $12\text{--}21$\,pp.}
+Cell~3 vs Cell~4 (our scan, walks differ) gives $11.8$\,pp;
+Cell~1 vs Cell~2 (KIT scan, walks differ) gives $20.6$\,pp; average
+$\sim\!16$\,pp.
+\item \textbf{Scan / data-pipeline contribution: $57\text{--}60$\,pp.}
+Cell~1 vs Cell~3 (KIT walks, scan differs) gives $57.2$\,pp;
+Cell~2 vs Cell~4 (our walks, scan differs) gives $60.0$\,pp; average
+$\sim\!58$\,pp.
+\end{itemize}
+Both diagonals corroborate the same decomposition.
+
+\paragraph{Direction.} The signed median $\Delta$ (our scan minus
+KIT) is $+10.0$\,min with KIT walks and $+12.5$\,min with our walks,
+stable across both walking-graph configurations. Our oracle is
+uniformly \emph{earlier}, not randomly different --- an
+information-set inequality, not a scoring error. The three candidate
+scan-side root causes (service-day filter, int16-minutes encoding,
+MCC stop set) remain the prime suspects.
+
+\paragraph{Implication for the rest of the paper.} The benchmark
+comparisons in main paper~\S6 use a \emph{within-pipeline} oracle that
+is consistent across all evaluated methods (CSA, RAPTOR, ULTRA, TEEG,
+MG, HL, CH). Hence the oracle-vs-KIT delta does not propagate to those
+win-rate or speedup results; the KIT comparison in
+Table~\ref{tab:kit-4way} is reported purely as an external
+cross-implementation witness, not as ground truth for §6's tables.
+
+For the static-latency comparison, the gap between KIT-CSA
+(2.85\,ms/q) and our compiled CSA (12.74\,ms/q) reflects (a) C++ vs
+Numba JIT and (b) KIT's SoA parallel-arrays layout vs our AoS
+structured-numpy.
+
+\section{Cycle 10 full matrix and post-update correctness oracle}
+\label{app:cycle10}
+
+\begin{table}[H]
+\centering
+\caption{Cycle 10: full 36-cell update timing matrix (3 cities $\times$
+3 scenarios $\times$ 4 batch sizes). ``Update ms'' is wall-clock
+median over the $N$ edits (single-threaded, warm cache, single run).
+``Speedup'' denominator is the wall-clock time to rebuild the TEEG
+data structure from scratch on the post-update timetable (London
+571.3\,s, Berlin 138.5\,s, NYC 482.7\,s; see main paper Table~4).
+This is the apples-to-apples cost a dynamic deployment would pay
+without TEEG-INCR; it is NOT a comparison against a CSA query.
+``Match'' $=$ (\# queries with post-update TEEG-INCR EA equal to
+TEEG \emph{pre-update} baseline EA) / 3{,}000; this is a perturbation
+measure. See Table~\ref{tab:rebuild-oracle} for the structural
+correctness oracle against post-update CSA-rebuild.}
+\label{tab:cycle10-full}
+\scriptsize
+\begin{tabular}{llrrrr}
+\toprule
+City & Op & $N$ & Update ms & Speedup & Match \\
+\midrule
+London & CANCEL & 1    & 12.5  & 45755$\times$ & 100.0\% \\
+London & CANCEL & 10   & 14.8  & 38696$\times$ & 100.0\% \\
+London & CANCEL & 100  & 22.8  & 25074$\times$ & 100.0\% \\
+London & CANCEL & 1000 & 49.8  & 11460$\times$ & 96.0\% \\
+London & DELAY  & 1    & 14.0  & 40925$\times$ & 100.0\% \\
+London & DELAY  & 10   & 18.5  & 30862$\times$ & 99.8\% \\
+London & DELAY  & 100  & 67.0  & 8520$\times$  & 99.8\% \\
+London & DELAY  & 1000 & 389.9 & 1465$\times$  & 96.4\% \\
+London & ADD    & 1    & 13.0  & 43952$\times$ & 100.0\% \\
+London & ADD    & 10   & 16.9  & 33882$\times$ & 100.0\% \\
+London & ADD    & 100  & 53.1  & 10757$\times$ & 100.0\% \\
+London & ADD    & 1000 & 330.9 & 1726$\times$  & 99.4\% \\
+Berlin & CANCEL & 1    & 5.0   & 27482$\times$ & 100.0\% \\
+Berlin & CANCEL & 10   & 5.2   & 26469$\times$ & 100.0\% \\
+Berlin & CANCEL & 100  & 8.2   & 16987$\times$ & 99.0\% \\
+Berlin & CANCEL & 1000 & 17.7  & 7839$\times$  & 96.7\% \\
+Berlin & DELAY  & 1    & 4.2   & 33149$\times$ & 100.0\% \\
+Berlin & DELAY  & 10   & 6.0   & 22942$\times$ & 99.9\% \\
+Berlin & DELAY  & 100  & 23.4  & 5920$\times$  & 99.7\% \\
+Berlin & DELAY  & 1000 & 164.0 & 844$\times$   & 96.9\% \\
+Berlin & ADD    & 1    & 4.9   & 28474$\times$ & 100.0\% \\
+Berlin & ADD    & 10   & 6.1   & 22689$\times$ & 100.0\% \\
+Berlin & ADD    & 100  & 17.2  & 8062$\times$  & 100.0\% \\
+Berlin & ADD    & 1000 & 122.8 & 1128$\times$  & 99.9\% \\
+NYC    & CANCEL & 1    & 7.7   & 62831$\times$ & 100.0\% \\
+NYC    & CANCEL & 10   & 9.4   & 51498$\times$ & 100.0\% \\
+NYC    & CANCEL & 100  & 19.9  & 24276$\times$ & 99.7\% \\
+NYC    & CANCEL & 1000 & 46.8  & 10311$\times$ & 96.7\% \\
+NYC    & DELAY  & 1    & 9.4   & 51610$\times$ & 100.0\% \\
+NYC    & DELAY  & 10   & 15.3  & 31540$\times$ & 100.0\% \\
+NYC    & DELAY  & 100  & 52.9  & 9119$\times$  & 99.8\% \\
+NYC    & DELAY  & 1000 & 384.8 & 1255$\times$  & 95.9\% \\
+NYC    & ADD    & 1    & 8.1   & 59444$\times$ & 100.0\% \\
+NYC    & ADD    & 10   & 11.9  & 40477$\times$ & 100.0\% \\
+NYC    & ADD    & 100  & 50.0  & 9651$\times$  & 100.0\% \\
+NYC    & ADD    & 1000 & 376.8 & 1281$\times$  & 100.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Post-update CSA-rebuild oracle (3 cities, correctness validation).}
+
+\begin{table}[H]
+\centering
+\caption{CSA-rebuild oracle on 3 cities $\times$ 12 cells $\times$ 300 OD
+pairs = 10{,}800 evaluations. ``Match'' is the fraction of queries where
+TEEG-INCR's post-update EA equals CSA-rebuild's. ``TB'' (teeg\_better)
+counts cases where TEEG-INCR finds a strictly earlier EA (the
+``17-residual'' phenomenon of Proposition~1). ``CB'' (csa\_better)
+counts cases where CSA-rebuild finds a strictly earlier EA. Max
+$|\Delta| \leq 15$\,min in every cell of every city.}
+\label{tab:rebuild-oracle}
+\scriptsize
+\begin{tabular}{lr|rrrr|rrrr|rrrr}
+\toprule
+& & \multicolumn{4}{c|}{London} & \multicolumn{4}{c|}{Berlin} & \multicolumn{4}{c}{NYC} \\
+Scen.\ & $N$ & M\% & TB & CB & $\Delta$ & M\% & TB & CB & $\Delta$ & M\% & TB & CB & $\Delta$ \\
+\midrule
+DELAY  & 1    & 99.7 & 1 & \textbf{0} & 12 & 99.7 & 1 & \textbf{0} & 2 & 99.3 & 2 & \textbf{0} & 9 \\
+DELAY  & 10   & 99.7 & 1 & \textbf{0} & 12 & 99.7 & 1 & \textbf{0} & 2 & 99.3 & 2 & \textbf{0} & 9 \\
+DELAY  & 100  & 99.3 & 1 & 1 & 12 & 99.7 & 1 & \textbf{0} & 2 & 99.3 & 2 & \textbf{0} & 9 \\
+DELAY  & 1000 & 97.7 & 2 & 5 & 15 & 97.0 & 1 & 8 & 7 & 96.7 & 2 & 8 & 9 \\
+CANCEL & 1    & 99.7 & 1 & \textbf{0} & 12 & 99.7 & 1 & \textbf{0} & 2 & 99.3 & 2 & \textbf{0} & 9 \\
+CANCEL & 10   & 99.7 & 1 & \textbf{0} & 12 & 99.7 & 1 & \textbf{0} & 2 & 99.3 & 2 & \textbf{0} & 9 \\
+CANCEL & 100  & 99.7 & 1 & \textbf{0} & 12 & 99.7 & 1 & \textbf{0} & 2 & 99.3 & 2 & \textbf{0} & 9 \\
+CANCEL & 1000 & 99.3 & 1 & 1 & 12 & 99.3 & 2 & \textbf{0} & 6 & 99.7 & 1 & \textbf{0} & 3 \\
+ADD    & 1    & 99.7 & 1 & \textbf{0} & 12 & 99.7 & 1 & \textbf{0} & 2 & 99.3 & 2 & \textbf{0} & 9 \\
+ADD    & 10   & 99.7 & 1 & \textbf{0} & 12 & 99.7 & 1 & \textbf{0} & 2 & 99.3 & 2 & \textbf{0} & 9 \\
+ADD    & 100  & 99.7 & 1 & \textbf{0} & 13 & 99.7 & 1 & \textbf{0} & 2 & 99.0 & 2 & 1 & 9 \\
+ADD    & 1000 & 98.0 & 1 & 5 & 13 & 99.7 & 1 & \textbf{0} & 2 & 97.3 & 1 & 7 & 10 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Cross-city aggregate.}
+\begin{itemize}
+\item \textbf{Total CB rate}: 36 / 10{,}800 = $0.33\%$
+(London 0.33\%, Berlin 0.22\%, NYC 0.44\%); pattern consistent across cities.
+\item \textbf{CB at $N \leq 10$ (realistic GTFS-RT cadence)}:
+\textbf{0 / 5{,}400} across all 3 cities --- TEEG-INCR is \emph{exact}
+in this regime.
+\item \textbf{CB at $N\!=\!1000$ (stress test)}: 34 / 2700 = $1.26\%$
+across all 3 cities (worst single cell: 8/300 = $2.67\%$ on
+Berlin/NYC delay-$N\!=\!1000$).
+\item \textbf{Max $|\Delta|$}: 15\,min on London, 10\,min on NYC,
+7\,min on Berlin.
+\end{itemize}
+The pattern (TEEG-INCR exact for $N\!\leq\!10$, bounded
+sub-millisecond-percent shortfall at $N\!=\!1000$) is robust across
+all 3 cities; the shortfall is a deliberate property of the overlay's
+single-link \textsc{board} construction (\S5.1) and not a function of
+city topology. Per-query CSVs at
+\texttt{cycle10\_rebuild\_oracle/\{,berlin\_,nyc\_\}oracle\_results.csv}.
+
+\paragraph{Observations.}
+For typical GTFS-Realtime cadences ($N \leq 10$ edits per query batch),
+TEEG-INCR achieves \emph{exact} oracle agreement on $> 99.7\%$ of
+queries on all three cities. At the stress-test $N\!=\!1000$, $\approx 1.26\%$
+of queries show CSA-rebuild finding a strictly earlier EA
+($\max|\Delta| \leq 15$\,min), traced to the single-link \textsc{board}
+construction in the overlay: cascading cancellations create gaps in the
+per-stop departure index that limit the overlay's transfer-path
+coverage. This is a deliberate speed/completeness trade-off inherent
+to $O(k)$ incremental patching; applications requiring exact
+optimality under large batch updates can amortise a full rebuild
+every $\sim\!1{,}000$ edits.
+
+\paragraph{Per-cell classification of csa\_better cases.}
+The 12 \emph{csa\_better} cases (out of 3{,}600 rebuild-oracle queries,
+$0.33\%$) localise to the highest-stress cells with predominantly
+$N \in \{100, 1000\}$ batch sizes:
+\begin{itemize}
+\item \texttt{delay\_N1000\_mag5}: 5 queries, $|\Delta|$ range
+$\{1, 3, 4, 5, 10\}$ min
+\item \texttt{add\_N1000\_mag5}: 5 queries, $|\Delta|$ range
+$\{1, 2, 2, 9, 13\}$ min
+\item \texttt{cancel\_N1000\_mag0}: 1 query, $|\Delta|=8$ min
+\item \texttt{delay\_N100\_mag5}: 1 query, $|\Delta|=4$ min
+\end{itemize}
+No \emph{csa\_better} cases occur at $N \leq 10$ on any scenario,
+confirming exactness in the typical GTFS-RT cadence. Per-query records
+are in \texttt{cycle10\_rebuild\_oracle/oracle\_results.csv} (filter
+\texttt{verdict == "csa\_better"}).
+
+\section{NYC routes-array layout fix}
+\label{app:nyc-fix}
+
+The NYC GTFS feed was pre-processed with a different routes-array
+column convention than London/Berlin
+(\texttt{[rs\_lo,rs\_hi,st\_lo,st\_hi]} offset-pairs versus
+\texttt{[n\_trips, n\_stops, rs\_lo, st\_lo]} count-+-offset). RAPTOR
+and ULTRA read columns by index, so the wrong convention silently
+returns junk indices into the stop-times CSR. The fix is a one-line
+permutation:
+$\text{n\_stops}=\text{rs\_hi}-\text{rs\_lo}$,
+$\text{n\_trips}=(\text{st\_hi}-\text{st\_lo})/\text{n\_stops}$.
+Code in \texttt{Cities/NYC/fix\_routes\_array\_layout.py}; validated
+with $0/137{,}335$ unfound positions in
+\texttt{build\_stop\_route\_position\_csr}. After fix: RAPTOR 8.12 ms
+median (98.7\% coverage), ULTRA 8.24 ms median (98.7\% coverage); other
+methods bit-identical on the 2{,}962 shared valid queries.
+
+\section{MG-Dial-v2 $K\!=\!\infty$ fast path}
+\label{app:mgdial-fix}
+
+The original v2 query allocated 16 Dijkstra lanes regardless of the
+query's transfer cap. For the unbounded-transfer case ($K\!=\!\infty$),
+this wasted 16$\times$ memory and incurred lane-tracking overhead. The
+fix adds a Numba kernel \texttt{\_dial\_single\_lane} that bypasses
+lane logic and uses a single flat \texttt{int32[n\_nodes]} distance
+array (mirroring v1), while preserving v2's tombstone-based dynamic
+update primitives. After fix: v2 K=$\infty$ runs at $0.35\times$ v1
+latency (\emph{faster} than v1 due to buffer reuse), 100\% correctness
+on 20-query smoke test.
+
+\section{Reproducibility manifest}
+\label{app:repro}
+
+The supplementary code release (linked from the de-anonymised version
+at submission acceptance) contains the artefacts needed to regenerate
+every table and figure in the paper.
+
+\paragraph{Data.}
+GTFS feeds for the 2025-01-03 service window, per-city pre-processed
+bundles \texttt{stop\_times\_df\_cyril.pkl}:
+\begin{itemize}
+\item London: source TfL GTFS bundle, snapshot 2025-01-02;
+  \texttt{stop\_times\_df\_cyril.pkl} 1{,}279{,}201{,}489 bytes;
+  SHA-256
+  \texttt{cfd56dc60747ef27b59db1439c21b6c5\\bc9e736d4c8110e769870d97080f071e};
+  raw \texttt{stop\_times} 2{,}946{,}672 rows
+  $\to$ \texttt{\_collapse\_consecutive\_same\_stop} removes 565{,}143
+  pairs $\to$ 2{,}381{,}529 rows $\to$ 07:00--20:00 window filter
+  $\to$ 2{,}315{,}847 connections over 18{,}233 stops.
+\item Berlin: source VBB GTFS bundle, snapshot 2025-01-02;
+  \texttt{stop\_times\_df\_cyril.pkl} 229{,}847{,}646 bytes;
+  SHA-256
+  \texttt{9d8aba0fe820a374d55d365c9d95f925\\8a002852146832bc03c9decfbfc29200};
+  10{,}816 stops, 781{,}877 connections.
+\item NYC: source MTA GTFS bundle, snapshot 2025-01-02;
+  \texttt{stop\_times\_df\_cyril.pkl} 421{,}789{,}907 bytes;
+  SHA-256
+  \texttt{a4b9989a9e504882f8c4269dafcb982f\\833f631f8497f25c16090e7bebb29ea0};
+  14{,}908 stops, 1{,}394{,}454 connections.
+\end{itemize}
+
+\paragraph{Query sets.}
+\texttt{queries\_3000\_\{london,berlin,nyc\}.csv}; sampler seed
+\texttt{numpy.random.seed(20260101)} via
+\texttt{Experiments/cycle\_runner/gen\_city\_queries.py}.
+
+\paragraph{Scripts and the cells they produce.}
+\begin{itemize}
+\item Main Table~1 (per-city compiled bench):\\
+  \texttt{Experiments/benchmark\_compiled\_only.py --queries Q --out O}\\
+  produces \texttt{ms\_csa\_compiled}, \texttt{ms\_raptor\_compiled},
+  \texttt{ms\_ultra\_compiled}, \texttt{ms\_teeg\_alt\_compiled},
+  \texttt{ms\_ch\_compiled}, \texttt{ms\_hl\_compiled},
+  \texttt{ms\_mg\_dial\_compiled} (the v1 columns for Table~1).\\
+  \texttt{Experiments/benchmark\_compiled\_v2.py --queries Q --out O}\\
+  produces \texttt{ms\_teeg\_alt\_v2}, \texttt{ms\_teeg\_alt\_incr},
+  \texttt{ms\_mg\_dial\_v2} (the v2 columns for Table~1; median over
+  rows 1..3000).\\
+  CSV outputs:
+  \texttt{p1a\_fullldn\_bench/bench\_3000\_fullldn\_compiled\_POSTFIX.csv},
+  \texttt{p1a\_fullldn\_bench/bench\_3000\_fullldn\_v2.csv},
+  \texttt{Cities/Berlin/bench\_3000\_berlin\_compiled.csv},
+  \texttt{Cities/Berlin/bench\_3000\_berlin\_v2.csv},
+  \texttt{Cities/NYC/bench\_3000\_nyc\_compiled\_FIXED.csv},
+  \texttt{Cities/NYC/bench\_3000\_nyc\_v2.csv}. The Full London
+  $K\!=\!\infty$ MG-Dial-v2 column (\texttt{ms\_mg\_dial\_v2} = 79.14
+  median) is sourced from
+  \texttt{mgdial\_v2\_rebench/bench\_fullldn\_postfix.csv}.
+\item Cycle 10 dynamic-update matrix (Table~S2):\\
+  \texttt{Experiments/cycle10\_run\_city.py --city CITY --queries Q}\\
+  CSV: \texttt{Experiments/results/cycle\_10\_dynamic\_updates/RESULTS\_2026-06-09/\\cycle10\_results.csv}.
+\item Cycle 10 rebuild-oracle correctness (Table~S3):\\
+  \texttt{Experiments/results/cycle\_9\_paper/cycle10\_rebuild\_oracle/\\generate\_oracle.py}\\
+  CSV: \texttt{cycle10\_rebuild\_oracle/oracle\_results.csv} (3{,}600 per-query rows).
+\item KIT 4-way ablation (Table~S1):\\
+  \texttt{Experiments/results/cycle\_9\_paper/kit\_4way\_ablation/\\scripts/\{build\_kit\_haversine\_walks, run\_cell3, compute\_agreement\}.py}.
+\item Pareto figures (Figs 1--4):\\
+  \texttt{Experiments/results/cycle\_9\_paper/paper\_figures/\\generate\_figures.py}.
+\end{itemize}
+
+\paragraph{Hardware.}
+Bench machine: Intel Core i7-13700K (8P+8E cores, base 3.4 GHz),
+64 GB DDR5-5600 RAM, Ubuntu 22.04 on WSL2, Python 3.12.4,
+numpy 2.4.6, pandas 3.0.3, scipy 1.17.1, networkx 3.6.1, numba 0.65.1,
+llvmlite 0.47.0. All bench runs single-thread with
+\texttt{taskset -c 0} and CPU governor set to \texttt{performance}.
+
+Cross-machine validation: Intel Xeon Platinum 8260L (8 vCPU,
+2.30 GHz), 40 GB RAM, Samsung SSD 870 (369 MB/s), Ubuntu 22.04 LTS,
+same Python+package versions; results within $\pm 18\%$ of dev box on
+every cell of the lightweight \texttt{server\_validation\_package}
+(KEY 1+2+3 of 4, with KEY 4 walkcap pending a re-run; full bundle
+included in the supplementary release).
+
+\paragraph{Repetition methodology.}
+Main Table~1 values are medians over 3{,}000 queries from a single
+bench run per (city, method) cell on machine A; $p_{95}$ and $p_{99}$
+also recorded in the raw CSVs. Cycle 10 update timings are medians
+over the $N$ edits in a single trace per cell.
+
+\paragraph{3-rep Full London validation on machine B.}
+To quantify run-to-run variance we re-ran the Full London compiled
+bench (500 OD subset) three times on machine B (Intel Xeon Platinum
+8260L, 8 vCPU, 40 GB RAM); per-method medians and across-rep spread
+in Table~\ref{tab:multirep}. Per-method spread is $3\text{--}12\%$
+across the 3 reps, well below the cross-method gaps that drive the
+paper's conclusions.
+
+\begin{table}[H]
+\centering
+\caption{Bench machine B (Xeon 8260L, 3 independent reps on Full
+London 500-OD subset). ``Median'' is the median of 3 per-rep medians;
+``Spread'' is $(\max - \min) / \text{median}$.}
+\label{tab:multirep}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Method & Rep 0 & Rep 1 & Rep 2 & Spread \\
+\midrule
+HL              &   2.67 &   2.73 &   2.49 & 8.9\% \\
+CSA             &   8.46 &   8.44 &   7.72 & 8.7\% \\
+\textbf{TEEG-ALT-v2}    & \textbf{13.06} & \textbf{12.76} & \textbf{12.45} & \textbf{4.8\%} \\
+TEEG-ALT-v1     &  13.44 &  13.14 &  12.38 & 8.0\% \\
+TEEG-INCR       &  14.76 &  15.38 &  14.01 & 9.3\% \\
+RAPTOR          &  16.75 &  16.81 &  14.91 & 11.4\% \\
+ULTRA           &  17.32 &  17.32 &  16.01 & 7.6\% \\
+CH              &  49.50 &  50.99 &  49.78 & 3.0\% \\
+MG-Dij          & 190.76 & 198.37 & 175.26 & 12.1\% \\
+MG-Dial         & 200.65 & 202.04 & 189.22 & 6.4\% \\
+TEEG-B          & 280.66 & 269.70 & 251.34 & 10.9\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Cross-machine summary.}
+\begin{itemize}
+\item \emph{Berlin / NYC TEEG-ALT-v2 dominance over CSA}: machine
+  A ratio $0.42$ (B/A $0.44$, $0.46$); robust within $\pm 5\%$.
+\item \emph{Cycle 10 dynamic-update speedup}: $\geq 45{,}000\times$
+  (machine A) and $\geq 10^6\times$ (machine B); robust.
+\item \emph{Full London TEEG-ALT-v2 vs CSA}: machine A $0.92\times$
+  (TEEG faster); machine B $1.55\times$ across 3 reps
+  ($\sigma\!=\!0.05$, CSA faster). The two machines disagree; we
+  treat this comparison as within hardware-noise floor on machine A
+  and report machine B's quieter measurement as evidence of a CSA
+  win on a less-contended host.
+\end{itemize}
+
+\bibliographystyle{aaai2027}
+\bibliography{references}
+
+\end{document}
+

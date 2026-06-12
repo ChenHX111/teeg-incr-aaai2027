@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pkl
+*.npy
+*.npz
+.DS_Store
+*.egg-info/
+.venv/
+*.aux
+*.bbl
+*.blg
+*.log
+*.out

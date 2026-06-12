@@ -1,0 +1,309 @@
+{
+  "package_version": "v2",
+  "generated_at": "2026-06-11T20:29:34+0100",
+  "n_files": 47,
+  "files": [
+    {
+      "rel_path": "data/MCRaptor_Data_Berlin/Berlin_Stops_Info.pkl",
+      "bytes": 1786761,
+      "sha256": "2dbf3729d2c45801f1c7969d5f380771e577b81321be37dd7d4a6f57095d117d",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_Berlin/London_Stops_Info.pkl",
+      "bytes": 1786761,
+      "sha256": "2dbf3729d2c45801f1c7969d5f380771e577b81321be37dd7d4a6f57095d117d",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_Berlin/route_stops_array_cyril.pkl",
+      "bytes": 627883,
+      "sha256": "8936969217c358b18fe0c41b4762b5f2d802cddcc065a32f13ee873d5e89e907",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_Berlin/routes_array_cyril.pkl",
+      "bytes": 153315,
+      "sha256": "ca99442408061f22b661cfc18e9a991c994c32b42571cbf16c3b646761ff7f45",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_Berlin/stop_routes_array_cyril.pkl",
+      "bytes": 627251,
+      "sha256": "9b48b32d977c62ec3fd55e73877b1b17fe4d9b66076a91b1fc5e9fd61865ff91",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_Berlin/stop_times_array_cyril.pkl",
+      "bytes": 13119670,
+      "sha256": "e249544db0f99d87008bd5a4f6ced205a314f16d249fd1a57fe2fd895c07ec4e",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_Berlin/stop_times_df_cyril.pkl.gz",
+      "bytes": 15366790,
+      "sha256": "eb3499ecf1776c6e60aeee1408fed8a9a8dd19f8e98159ae43bccbbcf1018e9c",
+      "kind": "gzipped_pkl",
+      "source_bytes": 229847646,
+      "source_sha256": "9d8aba0fe820a374d55d365c9d95f9258a002852146832bc03c9decfbfc29200"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_Berlin/stops_array_cyril_NewWalk.pkl",
+      "bytes": 173219,
+      "sha256": "5613d87c1a4fc000b0db4f9a6a2fe8224710365914fcf7fa7344dc29185a45ed",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_Berlin/transfer_array_cyril_NewWalk.pkl",
+      "bytes": 390561,
+      "sha256": "214cb557d60fdc29fc7040afdbc504f600fb7c1da813d51675c7c2b2cb597bf2",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_Full/London_Stops_Info.pkl",
+      "bytes": 18435800,
+      "sha256": "2d08e91320f4e0d9af26b369a5f48cc8ac8924add8b101c92a4d9d3dfbb0b3f8",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_Full/route_stops_array_cyril.pkl",
+      "bytes": 1427890,
+      "sha256": "f5e9908bda02e4402a5f597d255906c45979b67ca2012e995a712388a29eb9e3",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_Full/routes_array_cyril.pkl",
+      "bytes": 232706,
+      "sha256": "83e232ee175f21a31821fb92849089a4b57d55c4503e1f22432afa99341df36e",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_Full/stop_routes_array_cyril.pkl",
+      "bytes": 1427770,
+      "sha256": "39562ee754c34ac6d059c07a4c773d694a476a2b5c60edc768c186e31d7b27f8",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_Full/stop_times_array_cyril.pkl",
+      "bytes": 38104646,
+      "sha256": "054e3742735fb399697c6c8d03cba0a3d32c4497d868ed536fbade7ebb86b60c",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_Full/stop_times_df_cyril.pkl.gz",
+      "bytes": 89971882,
+      "sha256": "d3b4ba2dbe407ba159700b825bf10db3a528445494cbfd1408138cbbdf5b18a5",
+      "kind": "gzipped_pkl",
+      "source_bytes": 1279201489,
+      "source_sha256": "cfd56dc60747ef27b59db1439c21b6c5bc9e736d4c8110e769870d97080f071e"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_Full/stops_array_cyril_NewWalk.pkl",
+      "bytes": 291890,
+      "sha256": "4750cd36d54d54e9e4e39a9d014d601335b96544c56a43ed106d064a20b5d6d4",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_Full/transfer_array_cyril_NewWalk.pkl",
+      "bytes": 888004,
+      "sha256": "6e59baab3a96830414138da4c14756981ec3c8b5f1a81a1923fcada77f3e53b7",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_NYC/NYC_Stops_Info.pkl",
+      "bytes": 1640260,
+      "sha256": "cd27895f3db74ef8756c7d752575d6bc33604b49443ca2260eb805ffda7b2b93",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_NYC/route_stops_array_cyril.pkl",
+      "bytes": 1098843,
+      "sha256": "794077d0df5c017408a4332225c33d792ab5436e467293035324c6f74df3c38a",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_NYC/routes_array_cyril.pkl",
+      "bytes": 217259,
+      "sha256": "9e858276543fedc8a57080cb6af2c8fd18e933f738bdade0f34ae47f7a482c8f",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_NYC/stop_routes_array_cyril.pkl",
+      "bytes": 1098843,
+      "sha256": "e312e249859eefe60b008543cd894800e05e949e013b4542de6a6994ec0d8453",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_NYC/stop_times_array_cyril.pkl",
+      "bytes": 23103334,
+      "sha256": "fad91a2d618b6582a40cb1acee7c292035bf94642a0373ef6868cf3ca4529b68",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_NYC/stop_times_df_cyril.pkl.gz",
+      "bytes": 34586223,
+      "sha256": "d9c3c8448d7683c424d11d9efbeba5c1e787dd4579f81e6b4e292abcee3361e5",
+      "kind": "gzipped_pkl",
+      "source_bytes": 421789907,
+      "source_sha256": "a4b9989a9e504882f8c4269dafcb982f833f631f8497f25c16090e7bebb29ea0"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_NYC/stops_array_cyril_NewWalk.pkl",
+      "bytes": 238691,
+      "sha256": "d53469460893cd3ac01da4737f42e788e199453da4fc473f943ea34b55631d93",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "data/MCRaptor_Data_NYC/transfer_array_cyril_NewWalk.pkl",
+      "bytes": 983173,
+      "sha256": "aaa2de02a910c946670f01158488000e93e2a32f5d664808fcc34101d14c4a1a",
+      "kind": "pkl"
+    },
+    {
+      "rel_path": "queries/queries_17_residuals.csv",
+      "bytes": 784,
+      "sha256": "ecd5af709b6e899e15633e7f5334eb5af82cd5ae9eaca7ebde1892c788008330",
+      "kind": "queries_csv",
+      "n_rows": 17,
+      "source": "queries_3000.csv"
+    },
+    {
+      "rel_path": "queries/queries_300_london.csv",
+      "bytes": 11178,
+      "sha256": "ceefcb034ed18eae5a327aec676f398607a5c9edf8ce47ddc3c038336924a08f",
+      "kind": "queries_csv",
+      "n_rows": 300,
+      "source": "queries_3000.csv",
+      "seed": 43
+    },
+    {
+      "rel_path": "queries/queries_500_berlin.csv",
+      "bytes": 18757,
+      "sha256": "816abfe15ff7b0e3f0dbae908cfd4c49fecc26d21af791ae40aed87fc8925073",
+      "kind": "queries_csv",
+      "n_rows": 498,
+      "source": "queries_berlin_3000.csv",
+      "seed": 42
+    },
+    {
+      "rel_path": "queries/queries_500_london.csv",
+      "bytes": 18509,
+      "sha256": "10678aff8fe913c589c86d6139443e0198bcabae21a67ba69161ccaac625031e",
+      "kind": "queries_csv",
+      "n_rows": 498,
+      "source": "queries_3000.csv",
+      "seed": 42
+    },
+    {
+      "rel_path": "queries/queries_500_nyc.csv",
+      "bytes": 19100,
+      "sha256": "291a727e4cc9abfdf15e8274646e9b94bfb1a403a59f5037f558fabf9c4b87fe",
+      "kind": "queries_csv",
+      "n_rows": 498,
+      "source": "queries_nyc_3000.csv",
+      "seed": 42
+    },
+    {
+      "rel_path": "reference/cycle_9_paper/RESIDUAL_17_DEEP_DIVE/verdict.csv",
+      "bytes": 6902,
+      "sha256": "acb3d0edcfcc9079e4dc569b4db8da4d5d98f1501d6c8235a527570ec80c6354",
+      "kind": "reference_csv"
+    },
+    {
+      "rel_path": "reference/cycle_9_paper/stage_5_full_london/queries_3000.csv",
+      "bytes": 129481,
+      "sha256": "7429dd0b7dac1116815730a6137b36e77dba7f586541950eef026eb7900a0141",
+      "kind": "reference_csv"
+    },
+    {
+      "rel_path": "reference/cycle_9_paper/stage_5_full_london/results_3000_oracle.csv",
+      "bytes": 65621,
+      "sha256": "7c07ab486af52d2a2d78d94138b7b6e37308d6ef86a9082fb3c075cbd7c41655",
+      "kind": "reference_csv"
+    },
+    {
+      "rel_path": "reference/kit_cell2/agreement_matrix.csv",
+      "bytes": 89,
+      "sha256": "d6918ea1c195b4386e827cdf29e3c25d37eb94ea37cbd7b00921e8749439c767",
+      "kind": "kit_reference"
+    },
+    {
+      "rel_path": "reference/kit_cell2/agreement_matrix_4x4.csv",
+      "bytes": 138,
+      "sha256": "153134b30c109e829b26b0304d592b23ef998eb5522ece94e0c947865bdbe3a3",
+      "kind": "kit_reference"
+    },
+    {
+      "rel_path": "reference/kit_cell2/cell2_patch.diff",
+      "bytes": 4110,
+      "sha256": "58cf528a31fdf8a216ee147d85e1432e034f6a21635f2377355daad2dc9692e7",
+      "kind": "kit_reference"
+    },
+    {
+      "rel_path": "reference/kit_cell2/cell_2_summary.md",
+      "bytes": 10775,
+      "sha256": "46ad144d75b8c5f045a9fa519bdf99e8feb868025a2ccd7114048178dc7caa46",
+      "kind": "kit_reference"
+    },
+    {
+      "rel_path": "reference/kit_cell2/diff_stats.csv",
+      "bytes": 337,
+      "sha256": "1a18db13823148110db1d5967441e0c91f1d10dd742a08e54f6483e908ab750e",
+      "kind": "kit_reference"
+    },
+    {
+      "rel_path": "reference/kit_cell2/diff_stats_4x4.csv",
+      "bytes": 509,
+      "sha256": "8eb4de3c3cedfd17b7d4afc66c3d19dc45702b4c382902eeaa6f857b47c22c9e",
+      "kind": "kit_reference"
+    },
+    {
+      "rel_path": "reference/kit_cell2/merged_ea.csv",
+      "bytes": 14112,
+      "sha256": "72741810334ad7dfdd017ca0f6b3e227e34126d2bf6ef06659a20bdb7b81e9ce",
+      "kind": "kit_reference"
+    },
+    {
+      "rel_path": "reference/kit_cell2/merged_ea_4x4.csv",
+      "bytes": 20315,
+      "sha256": "de64b6fdc476fcd71e260b9917be250e573c5583491992a9dd22c41445f42353",
+      "kind": "kit_reference"
+    },
+    {
+      "rel_path": "reference/kit_cell2/our_walks_for_kit.manifest.json",
+      "bytes": 874,
+      "sha256": "f91815ee94097ec907eed35e806981acc9f1e50afd778f0ae71ee061e8f9b720",
+      "kind": "kit_reference"
+    },
+    {
+      "rel_path": "reference/kit_cell2/paper_text.md",
+      "bytes": 9217,
+      "sha256": "d6b7314f778f4dabaf9434c4c55b93adae48a95400b9f7180437658c9dd52ed6",
+      "kind": "kit_reference"
+    },
+    {
+      "rel_path": "reference/kit_cell2/paper_text_4way.md",
+      "bytes": 12370,
+      "sha256": "f252c0a3d9c5701dc5990c8a371d4e56bedff7a4f8b12aaf0264451e133817ca",
+      "kind": "kit_reference"
+    },
+    {
+      "rel_path": "reference/kit_cell2/queries_500_subset.csv",
+      "bytes": 8959,
+      "sha256": "a9c6ccba05673ffc6c221c0b6cdec4f7c4295efbd31476bd6919d54e08a9d97a",
+      "kind": "kit_reference"
+    },
+    {
+      "rel_path": "reference/kit_cell2/queries_500_subset_ultra.csv",
+      "bytes": 10800,
+      "sha256": "101d0e0fa39bcc895814fc5f6bdb2dd71f15fbcda5eb726e7f4309ad02ce4b42",
+      "kind": "kit_reference"
+    },
+    {
+      "rel_path": "reference/kit_cell2/summary.md",
+      "bytes": 11561,
+      "sha256": "8f4e7b51c1c76736a8514513d92ce37247f7a862c2a7ad70fe7180c08505e192",
+      "kind": "kit_reference"
+    }
+  ]
+}

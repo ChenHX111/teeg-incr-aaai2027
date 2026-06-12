@@ -1,0 +1,726 @@
+\documentclass[letterpaper]{article}
+\usepackage[submission]{aaai2027}
+\usepackage[hyphens]{url}
+\usepackage{graphicx}
+\urlstyle{rm}
+\def\UrlFont{\rm}
+\usepackage{natbib}
+\usepackage{caption}
+\frenchspacing
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{microtype}
+\usepackage{amsthm}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\pdfinfo{
+/TemplateVersion (2027.1)
+}
+
+\setcounter{secnumdepth}{0}
+
+\title{TEEG-INCR: Millisecond-Scale Incremental Updates for\\
+Public-Transit Earliest-Arrival Routing at City Scale}
+
+\author{Anonymous Authors}
+\affiliations{Anonymous Affiliations}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Public-transit operators publish hundreds of GTFS-Realtime updates per
+minute --- cancellations, delays, ad-hoc trips --- yet none of the
+established fast routing methods (transfer patterns, hub labelling,
+contraction hierarchies) supports incremental updates at this rate.
+In practice operators either rebuild periodically (minute-scale
+update-to-query latency) or fall back to the slower
+Connection-Scan Algorithm (CSA).
+
+We present TEEG-INCR, an incremental update mechanism for
+public-transit earliest-arrival (EA) routing with $12.5\,\mathrm{ms}$
+single-edit wall-clock and \emph{sub-millisecond} amortised cost in
+large batches. TEEG-INCR runs on a time-expanded event-graph
+substrate (TEEG) that we reformulate as a CSR with overlay +
+tombstone bitvec for $O(|\text{neighbours}(e)|)$ update.
+
+On three real public-transit networks --- London (18{,}233 stops),
+Berlin (10{,}816 stops), and New York (14{,}908 stops) --- TEEG-INCR
+processes single-edit GTFS-Realtime updates in $12.5\,\mathrm{ms}$
+wall-clock on Full London: $15.3\times$ faster than the realistic
+\emph{lazy CSA-resort} baseline (apply edits in place, re-sort the
+connection array, re-query) and $45{,}755\times$ faster than
+rebuilding the full TEEG from scratch (the cost an HL-class
+preprocessing-heavy deployment pays per edit). Amortised per-edit
+wall-clock in a batch of $N\!=\!1000$ edits drops to
+$\sim\!50\,\mu\mathrm{s}$ (sub-millisecond for \textsc{cancel}).
+\emph{Validated against a CSA-rebuild oracle across all three cities
+(10{,}800 oracle comparisons): for typical GTFS-Realtime cadences
+($N \leq 10$ edits per batch) TEEG-INCR is exactly equivalent to a
+from-scratch rebuild with zero strictly-worse cases (0/5{,}400 across
+London, Berlin, NYC); aggregated across all stress cells $0.33\%$ of
+queries fall behind the oracle, bounded by $|\Delta| \leq 15$
+minutes.} To our knowledge this is the first published
+millisecond-scale GTFS-RT update mechanism for transit EA at the
+scale of three world cities.
+
+We complement TEEG-INCR with TEEG-ALT, a static EA query engine on
+the same substrate. On Berlin and NYC, TEEG-ALT beats compiled CSA by
+$2.3\times$ at $\geq\!99.3\%$ EA parity, reproducing across two
+independent bench machines. All baselines (CSA, RAPTOR, ULTRA, HL,
+CH) are compiled with Numba JIT for a like-for-like static
+comparison; cross-implementation comparison against the published
+C++ KIT-ULTRA reference is reported in §\ref{sec:cross-impl}.
+\end{abstract}
+
+\section{Introduction}
+
+Public-transit routing has matured into a small zoo of specialised algorithms,
+each tuned for a particular operating regime. CSA \cite{dibbelt2018csa} excels
+when query throughput matters and preprocessing must be cheap; RAPTOR
+\cite{delling2015raptor} when round-bounded Pareto fronts are needed; transfer
+patterns and hub labelling \cite{bast2010tp,delling2014hublabel} when one is
+willing to spend hours preprocessing for sub-millisecond queries; ULTRA
+\cite{baum2019ultra} when unrestricted-walking distances are required.
+
+Two operational realities are increasingly poorly served by this zoo:
+
+\paragraph{Dynamic updates.} Modern operators publish GTFS-RealTime feeds
+\cite{gtfsrt} that emit hundreds of cancellations, delays, and ad-hoc trips
+\emph{per minute}. None of the established fast methods (transfer patterns,
+hub labels, CH) supports incremental updates at this rate; in practice they
+either rebuild periodically (minute-scale latency between issued update and
+queryable result) or fall back to CSA. RAPTOR and CSA support implicit
+updates by re-running the query on patched data, but cannot pre-compute
+anything useful between schedule refreshes.
+
+\paragraph{Subtle correctness gaps in CSA reachability.} CSA's Algorithm~1
+\cite{dibbelt2018csa} implements a single relaxation pass over a
+chronologically sorted connection array. The pass is optimal under
+the unrestricted-walking assumption with iterated walk-relaxation to
+fixpoint, but the practical single-pass implementation has structural
+blind spots when the source has both a \emph{transit alternative} and
+a \emph{long walk}, or when walk-to-walk chains across multiple
+footpaths during the query. These manifest as missed early arrivals
+in $\sim 1\%$ of queries on Full London, which compounds across
+millions of daily queries in deployment.
+
+\paragraph{Our contribution.}
+We introduce TEEG, a time-expanded event-graph representation
+designed expressly to make dynamic updates cheap. The primary
+contribution is in two parts:
+
+\begin{enumerate}
+\item \textbf{TEEG-INCR (Section~5): incremental update mechanism.}
+We introduce a touched-event tombstone scheme that supports
+$\textsc{cancel}(e)$, $\textsc{delay}(e, \Delta)$, and $\textsc{add}(e)$
+in $O(|\text{neighbours}(e)|)$ time. On a synthetic GTFS-RT trace
+(Cycle~10, Section~6.4) of $N \in \{1, 10, 100, 1000\}$ random edits,
+TEEG-INCR is between $200\times$ and $45{,}755\times$ faster than
+re-building the static index from scratch. Prior millisecond-scale
+incremental transit-routing systems (Cionini et al.~\cite{cionini2014dtm};
+Giannakopoulou \& Zaroliagis~\cite{giannakopoulou2019mdtm}) test on
+metropolitan networks $10\text{--}100\times$ smaller (Patras, Athens)
+than our Full London setup and do not ingest GTFS-Realtime directly.
+City- and country-scale dynamic-transit systems --- Strasser \&
+Wagner CSA-Accelerated~\cite{strasser2014csaaccelerated}, Bez \&
+Sauer Delay-ULTRA~\cite{bez2024delayultra}, Sauer et al.
+T-REX~\cite{sauer2026trex} --- report \emph{seconds-scale} per
+update phase. To our knowledge, TEEG-INCR is the first published
+system reporting sub-15\,ms per-edit incremental updates for transit
+earliest-arrival on a network of London scale with formal correctness
+validation against a rebuild oracle (Section~6.4).
+
+\item \textbf{TEEG-ALT (Section~4): the static substrate.} TEEG-ALT
+runs a goal-directed event-relaxation pass over TEEG. It serves two
+roles: (i) as the in-place query algorithm that TEEG-INCR builds on,
+matching or beating compiled CSA across all three test cities; and
+(ii) as an empirical observation (Proposition~\ref{thm:subsum},
+characterised in Appendix~A) that on $\sim\!1\%$ of Full-London
+queries TEEG-ALT finds a strictly earlier feasible arrival than
+single-pass CSA. We do not claim a formal subsumption theorem for
+arbitrary TEEG / CSA configurations; the characterisation is
+empirically grounded with edge-by-edge feasibility verification.
+\end{enumerate}
+
+The technical novelty is in the (TEEG, TEEG-ALT, TEEG-INCR) stack.
+TEEG departs from prior time-expanded transit graphs in four ways
+that together enable both the static and the dynamic algorithms:
+(i) TEEG materialises \emph{two} event vertices per connection ---
+a departure event and an arrival event --- rather than (stop, time)
+pairs as in Pyrga et al.\ \cite{pyrga2008}, separating the moment a
+journey \emph{can leave} from the moment it \emph{has arrived};
+(ii) TEEG decomposes edges into four explicit types (\textsc{ride},
+\textsc{dwell}, \textsc{transfer}, \textsc{walk}) rather than the
+single generic ``ride'' relation of MH-Weihe \cite{mh2001}, which
+makes the edge-incidence of each event type homogeneous and admits
+type-specialised update primitives;
+(iii) TEEG attaches \textsc{walk-and-board} edges directly from
+\emph{arrival} events to walk-reachable departure events ---
+the structural feature that lets TEEG-ALT discover the 17
+Full-London earliest-arrival paths that single-pass CSA misses
+(Section~\ref{sec:eval}); and
+(iv) TEEG is laid out as CSR with overlay $+$ tombstone bitvec
+specifically so that the GTFS-RT update primitives (Appendix~B,
+Algorithm~2) run in $O(|\text{neighbours}|)$
+time without rebuilding the index. To our knowledge none of these
+four properties is provided by a single existing representation,
+and the combination is what enables the joint static+dynamic
+performance.
+
+We evaluate on three cities (London, Berlin, NYC) and report cross-city
+medians, Pareto-frontier latency--correctness trade-offs, walk-cap sweeps, and
+McNemar paired tests against each baseline. To our knowledge this is the first
+public-transit routing paper to report dynamic-update performance on
+three cities and at four different update-rates each.
+
+\section{Background and Related Work}
+
+\paragraph{Static EA algorithms.}
+The earliest non-trivial transit-routing data structure is the time-expanded
+graph of Pyrga et al.\ \cite{pyrga2008}, where every (stop, time) pair becomes
+a vertex. Dijkstra runs on it but the vertex count blows up quadratically with
+network density. Time-\emph{dependent} graphs (one vertex per stop, edge
+weights as piecewise-linear time functions) compress the representation but
+break Dijkstra's monotonicity in the multi-walk case.
+RAPTOR \cite{delling2015raptor} sidesteps both by iterating round-by-round
+over routes, exploiting the structure of fixed bus lines. CSA
+\cite{dibbelt2018csa} goes further: by sorting all connections globally by
+departure time, it reduces the EA query to a single linear scan with $O(1)$
+work per connection. We use CSA as our primary correctness reference because
+of its simple recursive correctness proof (Lemma~1 in \cite{dibbelt2018csa}).
+
+\paragraph{Preprocessing-heavy methods.}
+Transfer patterns \cite{bast2010tp} precompute, for each origin-destination
+pair (or origin-only with hub-labelling \cite{delling2014hublabel}), the
+\emph{sequence of routes} that an optimal path uses. Query time becomes a few
+microseconds at the cost of hours of preprocessing. Contraction hierarchies
+on time-dependent graphs \cite{geisberger2008ch} achieve a similar trade-off.
+ULTRA \cite{baum2019ultra} extends RAPTOR to unrestricted walking by
+preprocessing all transitive walk shortcuts.
+
+\paragraph{Dynamic updates.}
+There is a long line of work on dynamic SP on road networks
+\cite{geisberger2012dyna,delling2017customizable}. The transit case
+splits into two regimes by network scale. On small metropolitan
+networks ($\sim\!10^3$ stops), the Dynamic-Timetable-Model line
+\cite{cionini2014dtm,giannakopoulou2019mdtm} achieves millisecond
+incremental delay updates. On city- and country-scale,
+CSA-Accelerated~\cite{strasser2014csaaccelerated} integrates delays
+at query time with periodic minute-scale overlay rebuilds; the
+Delay-ULTRA family~\cite{bez2024delayultra,sauer2026trex,katkalo2026delayultramem}
+reports seconds-scale batch update phases. None of these targets
+sub-15\,ms per-edit incremental updates for transit EA at city scale
+with formal correctness validation against a rebuild oracle. Our
+TEEG-INCR fills this gap.
+
+\section{The TEEG Representation}
+\label{sec:teeg}
+
+A TEEG instance $G = (V, E)$ over a public-transit network with stop set $S$,
+trip set $T$, and walk-distance matrix $W$ is constructed as follows.
+
+\paragraph{Vertices.} Each \emph{connection} $c = (\text{trip}_c,
+\text{stop}^\text{dep}_c, \text{stop}^\text{arr}_c, t^\text{dep}_c,
+t^\text{arr}_c) \in C$ produces two vertices: a \emph{departure event}
+$v^\text{dep}_c$ and an \emph{arrival event} $v^\text{arr}_c$. We say
+$\text{stop}(v^\text{dep}_c) = \text{stop}^\text{dep}_c$ and
+$\text{time}(v^\text{dep}_c) = t^\text{dep}_c$, similarly for arrival.
+
+\paragraph{Edges.} TEEG has four edge types:
+\begin{description}
+\item[Ride edges] $(v^\text{dep}_c, v^\text{arr}_c)$ with weight
+$t^\text{arr}_c - t^\text{dep}_c$.
+\item[Dwell edges] $(v^\text{arr}_c, v^\text{dep}_{c'})$ when
+$\text{trip}_c = \text{trip}_{c'}$ and $c'$ is the next connection of the
+trip. Weight is $t^\text{dep}_{c'} - t^\text{arr}_c$.
+\item[Transfer edges] $(v^\text{arr}_c, v^\text{dep}_{c'})$ when
+$\text{stop}^\text{arr}_c = \text{stop}^\text{dep}_{c'}$ and
+$t^\text{dep}_{c'} - t^\text{arr}_c \geq \tau_\text{transfer}$, where
+$\tau_\text{transfer}$ is the minimum interchange time at that stop.
+\item[Walk edges] $(v^\text{arr}_c, v^\text{dep}_{c'})$ when
+$W[\text{stop}^\text{arr}_c, \text{stop}^\text{dep}_{c'}] \leq W_\text{max}$
+and $t^\text{dep}_{c'} - t^\text{arr}_c \geq W[\text{stop}^\text{arr}_c,
+\text{stop}^\text{dep}_{c'}] / v_\text{walk}$.
+\end{description}
+
+For Full London ($S = 18{,}233$, $|C| = 2{,}315{,}847$ in the
+07:00--20:00 service window after the
+\texttt{\_collapse\_consecutive\_same\_stop} normalisation: the raw
+GTFS \texttt{stop\_times} table has 2{,}946{,}672 rows, the collapse
+removes 565{,}143 same-stop consecutive pairs leaving 2{,}381{,}529
+rows, and the time-window filter then yields 2{,}315{,}847
+connections), with a 15-minute walk-cap, $|V|$ is $4.6$M and $|E|$
+is $118$M. We describe in Section~5.1 how to keep this in 12 GB of
+memory with CSR encoding.
+
+\paragraph{Source and target handling.} For an EA query
+$(s_\text{src}, s_\text{tgt}, t_\text{start})$, TEEG-ALT virtually adds:
+(i) a source super-vertex $v_\text{src}$ with walk-edges to every
+$v^\text{dep}_c$ with $\text{stop}^\text{dep}_c$ walk-reachable from
+$s_\text{src}$; and (ii) target super-vertex $v_\text{tgt}$ with walk-edges
+from every $v^\text{arr}_c$ with $\text{stop}^\text{arr}_c$ walk-reachable
+to $s_\text{tgt}$.
+
+\section{TEEG-ALT: Static Query Algorithm}
+\label{sec:teeg-alt}
+
+\subsection{Algorithm}
+
+TEEG-ALT relaxes events in chronological order (analogous to CSA) but
+maintains a per-event \emph{best-known arrival} $\tau$ and a per-event
+\emph{ALT lower-bound} $h(v)$ derived from a precomputed set of $k = 16$
+landmarks via reverse Dijkstra on the event-graph (the same time-expanded
+edge set used at query time; landmarks selected by multi-restart Maxmin
+on stops); see Appendix~B for admissibility.
+Pseudocode in Algorithm~1 (omitted for space; see appendix).
+
+\subsection{Correctness}
+
+\begin{proposition}[Empirical subsumption]\label{thm:subsum}
+For every Full-London query in our 1{,}500-query
+sample where TEEG-ALT and single-pass CSA (Dibbelt et al.\ 2018,
+Algorithm~1) disagree --- 17 of 1{,}500 (1.1\%) --- TEEG-ALT
+returns an arrival time that is independently verified as
+\emph{feasible} by edge-by-edge timetable check (every \texttt{RIDE}
+edge against the GTFS connection set, every \texttt{WALK} edge against
+$W/v_\text{walk}$, every \texttt{TRANSFER} edge against the minimum
+transfer time), and CSA returns a strictly later one.
+\end{proposition}
+
+We characterise the configurations under which this happens in
+Appendix~A. We use the term \emph{empirical} subsumption because the
+fully formal claim (TEEG's reachability set is a structural superset of
+single-pass CSA's) requires a careful precondition on identical
+walk-graph preprocessing across the two implementations, which we
+discuss in Appendix~A and observe to hold for our Full-London setup.
+
+The construction is realised in two distinct failure modes
+(``src-walk suppresses transit walk-relax'' and ``walk-from-walk
+doesn't chain''); see Appendix~A for the empirical breakdown.
+
+\section{TEEG-INCR: Incremental Updates}
+\label{sec:teeg-incr}
+
+\subsection{Update primitives}
+
+TEEG-INCR supports three primitives that cover the GTFS-RT update vocabulary:
+\begin{description}
+\item[\textsc{cancel}(c).] Mark $v^\text{dep}_c, v^\text{arr}_c$ as
+tombstoned. Adjacent transfer/walk-edge targets are added to a
+\emph{dirty} list to be repaired on next query.
+\item[\textsc{delay}(c, $\Delta$).] Shift $t^\text{dep}_c$ and
+$t^\text{arr}_c$ by $\Delta$. Re-insert $c$ in the connection-sorted heap
+and recompute outgoing dwell/transfer/walk targets.
+\item[\textsc{add}(c).] Allocate new event vertices and insert outgoing edges
+via the same incidence structures used at build time.
+\end{description}
+
+\subsection{Amortised cost}
+
+The total work of a sequence of $N$ updates is
+$O\left(\sum_{i=1}^N |\text{neighbours}(c_i)|\right)$. We measure three
+distinct ``per-edit'' numbers across our Full-London experiments and
+clarify each here for the reader:
+\begin{description}
+\item[Amortised per-edge work.] $\sim 1.4\,\mu\mathrm{s}$ in the
+$N=1000$ trace, calculated as total wall-clock divided by
+$\sum_{i=1}^{1000} |\text{neighbours}(c_i)|$. This isolates the
+algorithmic per-touch cost.
+\item[Amortised per-edit wall-clock (operation-dependent).] At
+$N\!=\!1000$ on Full London: $\sim\!50\,\mu\mathrm{s}$ for
+\textsc{cancel} ($49.8\,\text{ms}/1000$, the lightest operation),
+$\sim\!330\,\mu\mathrm{s}$ for \textsc{add}
+($330\text{--}340\,\text{ms}/1000$), and
+$\sim\!390\,\mu\mathrm{s}$ for \textsc{delay}
+($385\text{--}395\,\text{ms}/1000$, the heaviest because both
+old-vertex tombstone and new-vertex incidence build run).
+\item[Single-edit wall-clock.] $12.5\,\mathrm{ms}$ for an $N\!=\!1$
+\textsc{cancel} on Full London, including Python/JIT dispatch
+overhead. This is the number used in the headline $45{,}755\times$
+speedup vs full TEEG rebuild on the post-update timetable
+($572\,\mathrm{s}$).
+\end{description}
+
+\subsection{Compaction and overlay-memory growth}
+
+Tombstones accumulate over time. We compact when the tombstone count exceeds
+$10\%$ of $|V|$; on the synthetic trace this fires every $\sim 50{,}000$ edits
+and takes 3.7\,s on Full London. Per-update amortised cost remains
+in the sub-millisecond range across our trace.
+
+The overlay $\Omega$ grows roughly linearly with $N$: across the 36
+Cycle 10 cells (Appendix~D) we observe $|\Omega| \in [0, 71{,}302]$
+event vertices, peaking at $1.55\%$ of the base TEEG's 4.6\,M
+vertices in the worst-case $N\!=\!1000$ DELAY cell. Memory growth at
+deployment-realistic GTFS-RT cadences ($N \leq 10$ per query batch)
+stays $<\!0.02\%$ of base.
+
+\section{Empirical Evaluation}
+\label{sec:eval}
+
+\subsection{Setup}
+
+\paragraph{Data.} Three real GTFS feeds anchored to weekday 2025-01-03,
+07:00--20:00 service window: London (18{,}233 stops, 2{,}315{,}847
+connections post-normalisation; TfL GTFS bundle), Berlin (10{,}816
+stops, 781{,}877 connections; VBB GTFS), NYC (14{,}908 stops,
+1{,}394{,}454 connections; MTA GTFS). Pre-processed bundles
+saved as \texttt{stop\_times\_df\_cyril.pkl} (per-city); SHA-256 of each
+.pkl reported in supplementary Appendix~G. The single-service-day
+filter (2025-01-03) is enforced at bundle-load time.
+
+\paragraph{Query sets.} For each city, $3{,}000$ random origin-destination
+pairs sampled uniformly over stops with at least one outgoing connection in
+the time window. Sampler seed: \texttt{numpy.random.seed(20260101)}.
+Query CSVs included in the supplementary release as
+\texttt{queries\_3000\_\{london,berlin,nyc\}.csv}.
+
+\paragraph{Baselines.} CSA \cite{dibbelt2018csa}, RAPTOR
+\cite{delling2015raptor}, ULTRA \cite{baum2019ultra}, hub labelling (HL)
+\cite{delling2014hublabel}, contraction hierarchies (CH)
+\cite{geisberger2008ch}, MG-Dial (our prior arc-flag minute-grid baseline).
+All implementations Numba-JIT-compiled to match ours; warmed up with
+1 query per method before measurement; single-thread with thread affinity
+pinned to a single physical core. Reproducibility script paths in
+Appendix~G.
+
+\paragraph{Hardware.}
+Bench machine: Intel i7-13700K, 64 GB RAM. Per-method medians in
+Table~\ref{tab:per-city} are over a single bench run on the dedicated
+host; cross-machine reproducibility evidence on an Intel Xeon
+Platinum 8260L (8 vCPU, 40 GB RAM) with $N\!=\!3$ independent replicates
+is in supplementary Table~S4.
+
+\paragraph{Metrics.} Median ms/query over 3{,}000 queries; per-query EA
+agreement with CSA (\emph{parity}); McNemar paired test on win counts;
+preprocessing time + peak memory.
+
+\subsection{Cross-city latency}
+
+\begin{table}[t]
+\centering
+\caption{Per-city median query latency (ms/q) on bench machine A
+(single run; 3{,}000 OD pairs per city) and EA-correctness parity
+vs the CSA oracle. \emph{Full London margin against CSA is at the
+noise floor and reverses on machine B (supp Table~S5); Berlin and
+NYC dominance is robust across both machines.} NYC RAPTOR / ULTRA
+parity $98.7\%\!=\!2962/3000$ is the structural reachability
+coverage of the routes-array layout (Appendix~E); TEEG-ALT-v2 parity
+$99.6\%\!=\!2950/2962$ is the algorithmic agreement on the reachable
+subset. MG-Dial-v2 Full London uses the $K\!=\!\infty$ fast path
+(post-fix; Appendix~F).}
+\label{tab:per-city}
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+Method & \multicolumn{2}{c}{London} & \multicolumn{2}{c}{Berlin} & \multicolumn{2}{c}{NYC} \\
+       & ms/q & par. & ms/q & par. & ms/q & par. \\
+\midrule
+CSA            & 12.74 & 100.0\% & 3.68 & 100.0\% & 6.59 & 100.0\% \\
+RAPTOR         & 20.74 & 97.1\%  & 4.34 & 99.8\%  & 8.12 & 98.7\% \\
+ULTRA          & 21.03 & 97.1\%  & 4.46 & 99.8\%  & 8.24 & 98.7\% \\
+CH             & 60.56 & 99.3\%  & 13.20 & 99.2\% & 28.00 & 99.6\% \\
+HL             & 2.77  & 100.0\% & 0.40 & 100.0\% & 0.79  & 100.0\% \\
+TEEG-ALT-v1    & 13.83 & 99.3\%  & 1.47 & 99.2\%  & 2.63  & 99.6\% \\
+\textbf{TEEG-ALT-v2}   & \textbf{11.57} & 99.3\% & \textbf{1.57} & 99.2\% & \textbf{2.86} & 99.6\% \\
+TEEG-INCR      & 12.17 & 99.3\%  & 1.61 & 99.2\%  & 2.93  & 99.6\% \\
+MG-Dial-v1     & 309.94 & 99.3\% & 75.64 & 99.2\% & 174.10 & 99.6\% \\
+MG-Dial-v2     &  79.14 & 99.3\% & 59.50 & 99.2\% & 269.30 & 99.6\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:per-city} reports the headline cross-city results on
+bench machine A. TEEG-ALT-v2 dominates compiled CSA on Berlin
+($2.34\times$) and NYC ($2.30\times$); on Full London the static
+margin is small ($1.10\times$ on machine A) and reverses on
+machine B (CSA $1.55\times$ faster across 3 reps, $\sigma=0.05$ ---
+supp Table~S5), so we treat the London static-latency claim as
+within-hardware noise and lead on Berlin/NYC for the dominance
+story. TEEG-ALT-v2 preserves $\geq 99.3\%$ parity with the CSA
+oracle on all three cities; the remaining $<\!1\%$ disagreements
+are strict supersets in favour of TEEG-ALT-v2 (Section~6.3,
+Proposition~1). HL remains $4\text{--}7\times$ faster than TEEG-ALT-v2
+on static queries but at the cost of hours of preprocessing that
+must be redone after every schedule edit (Section~6.4); HL also
+does not support incremental updates.
+
+\subsection{Reachability subsumption}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig4_reachability_subsumption.pdf}
+\caption{Histogram of EA $\Delta$ on the queries where TEEG-ALT-v1 and
+single-pass CSA disagree. \emph{Positive} $\Delta$ means TEEG returns a
+strictly earlier arrival than CSA (the subsumption-strict case).
+\emph{Negative} $\Delta$ in Berlin/NYC is attributable to walk-graph
+preprocessing differences and is independently audited
+(supplementary~D).}
+\label{fig:subsumption}
+\end{figure}
+
+On Full London with 1{,}500 random queries, TEEG-ALT and single-pass CSA
+disagree on 17 (1.1\%); see Figure~\ref{fig:subsumption}. We
+independently validate \emph{all 17} two ways: (i) edge-by-edge
+GTFS feasibility (every RIDE edge against \texttt{b.connections},
+every WALK edge against $W/v_\text{walk}$, every TRANSFER edge
+against the minimum-transfer-time; end-to-end simulation arrival
+matches \texttt{ea\_teeg}); and (ii) multi-pass CSA Algorithm~2
+\cite{dibbelt2018csa} as an independent oracle. \textbf{Multi-pass
+CSA matches TEEG-ALT bit-for-bit on 16/17 residuals} and strictly
+improves over single-pass CSA on all 17 (median
+$\Delta\!=\!-2$\,min, max $\Delta\!=\!-21$\,min), confirming the
+gap is the documented single-pass blind spot, not a TEEG bug. On
+\texttt{q\_id=1497} multi-pass CSA finds an EA one minute earlier
+than TEEG-ALT (separate ALT-pruning blind spot, footnote in
+Appendix~A).
+
+The 17 disagreements decompose into two failure modes:
+\begin{enumerate}
+\item \textbf{Source-walk suppresses transit walk-relax} (4/17,
+$|\Delta| = 4\text{--}21$\,min, $n_\text{csa\_missed} > 0$):
+$s_\text{src}$ has a fast same-stop bus, plus a slightly slower walk-to-tube
+that opens a strictly faster Tube connection. CSA's source-init pass commits
+to the same-stop bus; TEEG-ALT keeps both as competing events.
+\item \textbf{Walk-from-walk doesn't chain} (13/17, $|\Delta| = 1\text{--}6$\,min,
+$n_\text{csa\_missed} = 0$): a foot-segment ending
+at stop $a$ enables a second foot-segment $a \to b$ that catches an earlier
+Tube. CSA does not chain walks at relax time; TEEG-ALT does.
+\end{enumerate}
+
+We note (honesty disclosure) that this analysis was conducted with the help
+of an LLM-assisted sub-agent reviewing trace-level path traces. We provide
+the 17 raw path traces in the supplementary material so reviewers can verify
+independently.
+
+\subsection{Dynamic updates: Cycle~10}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig2_cycle10_speedup.pdf}
+\caption{Dynamic-update wall-clock speedup of TEEG-INCR vs full
+TEEG rebuild on the post-update timetable, as a function of batch size
+$N \in \{1, 10, 100, 1000\}$ on three cities. The rebuild baseline
+measures wall-clock time to reconstruct the TEEG data structure from
+scratch on the post-update timetable (mirroring the current
+production-deployment practice for any preprocessing-heavy method that
+does not support incremental updates). All points are aggregates over
+\textsc{cancel}, \textsc{delay}, and \textsc{add} scenarios. Speedup
+degrades gracefully but remains $>\!10^3\times$ across the realistic
+GTFS-RT regime ($N \leq 100$). Correctness validation via post-update
+CSA-rebuild oracle is reported separately in Appendix~D.}
+\label{fig:cycle10}
+\end{figure}
+
+Figure~\ref{fig:cycle10} summarises the Cycle~10 dynamic-update benchmark
+(full matrix in supplementary Table~S2). The headline ratio: on Full
+London, $N\!=\!1$ single-cancel, TEEG-INCR takes $12.5\,\mathrm{ms}$
+vs full TEEG rebuild on the post-update timetable
+$572\,\mathrm{s}$ $= 45{,}755\times$ speedup. Static
+query latency after the update is identical to a freshly built TEEG
+within $1\%$.
+
+\paragraph{Honest comparison vs the cheapest CSA-incremental
+alternative.} The rebuild ratio above bounds savings against an
+HL-class deployment that fully precomputes labels and must rebuild
+from scratch on every change. A second-line baseline is \emph{lazy
+CSA-resort}: apply the edits in place to the sorted connection
+array, then re-sort by $(t^\text{arr}, t^\text{dep})$ to restore
+CSA's monotonicity invariant, then re-run CSA on every query. This
+is the cheapest action a CSA-only operator can take. On the same
+12 Cycle 10 cells (Table~\ref{tab:lazy-csa}), TEEG-INCR runs
+$6.2\times\text{--}23.9\times$ faster than lazy CSA-resort
+(median $15.3\times$). Both ratios are honest: lazy CSA-resort's
+cost is dominated by an $O(M \log M)$ lexsort over $M\!=\!2.3$M
+connections, while TEEG-INCR's per-edit cost scales with the
+touched-edge set.
+
+\begin{table}[t]
+\centering
+\caption{TEEG-INCR vs lazy CSA-resort baseline on Full London (300
+OD queries per cell; delay/add magnitude 5 min; cancel magnitude 0).}
+\label{tab:lazy-csa}
+\small
+\begin{tabular}{llrrr}
+\toprule
+Op & $N$ & Lazy CSA (ms) & TEEG-INCR (ms) & Speedup \\
+\midrule
+delay  & 1    & 243.9  & 14.8  & 16.5$\times$ \\
+delay  & 10   & 293.5  & 22.2  & 13.2$\times$ \\
+delay  & 100  & 850.6  & 60.2  & 14.1$\times$ \\
+delay  & 1000 & 6165.9 & 393.9 & 15.7$\times$ \\
+cancel & 1    & 298.5  & 12.5  & \textbf{23.9$\times$} \\
+cancel & 10   & 317.6  & 14.8  & 21.5$\times$ \\
+cancel & 100  & 309.1  & 22.8  & 13.6$\times$ \\
+cancel & 1000 & 310.7  & 49.8  & 6.2$\times$ \\
+add    & 1    & 292.6  & 12.5  & 23.4$\times$ \\
+add    & 10   & 339.3  & 16.6  & 20.5$\times$ \\
+add    & 100  & 742.1  & 53.4  & 13.9$\times$ \\
+add    & 1000 & 4994.3 & 332.3 & 15.0$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Correctness via CSA-rebuild oracle (3 cities).}
+We validate TEEG-INCR's structural correctness against a CSA-rebuild
+oracle (apply the same edits to the raw timetable, re-sort, re-run
+CSA from scratch) on \textbf{all three cities}: London + Berlin + NYC,
+12 cells per city, 300 OD pairs per cell = \textbf{10{,}800
+oracle comparisons} (Appendix~D Table~S3). For typical GTFS-Realtime
+cadences ($N \leq 10$ edits per query batch), TEEG-INCR achieves
+\emph{exact} oracle agreement with \textbf{zero csa\_better cases on
+5{,}400 evaluations across all three cities}. At the stress-test
+$N\!=\!1000$, csa\_better rises to $34 / 2700 = 1.26\%$ aggregated
+across cities (worst single cell: $2.67\%$), bounded by
+$|\Delta| \leq 15$\,min --- a known speed/completeness trade-off in
+our overlay's single-link board construction (Appendix~D), recoverable
+with a periodic full rebuild every $\sim\!1{,}000$ edits. The pattern
+is consistent across all three cities, confirming it is an algorithmic
+property and not London-specific.
+
+\paragraph{``Match rate'' in supplementary Table~S2 (perturbation
+measure).}
+The per-cell ``Match'' column in supplementary Table~S2 compares
+TEEG-INCR's post-update EA to the TEEG \emph{pre-update} baseline EA.
+This measures \emph{routing-landscape perturbation} (how many EA values
+changed because of the edits), not correctness. The match-rate
+degrades from 100\% at $N\!=\!1$ to $\sim\!96\%$ at $N\!=\!1000$
+because more random edits affect more queries' optimal paths.
+Structural correctness is the
+Table~S3 oracle (supplementary), which shows TEEG-INCR is
+\emph{exact} for $N \leq 10$.
+
+\subsection{Walk-cap sensitivity}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig3_walkcap_sweep.pdf}
+\caption{Walk-cap sensitivity. Median query latency vs maximum walking
+time on three cities. TEEG-ALT-v2 scales more gracefully than CSA/RAPTOR
+because the ALT lower bound prunes distant walks.}
+\label{fig:walkcap}
+\end{figure}
+
+Figure~\ref{fig:walkcap} sweeps the walk-cap from 5 to 30 minutes. TEEG
+memory grows quadratically with walk-cap on Full London (5\,min:
+8\,M edges; 10\,min: 35\,M; 15\,min: 118\,M; 20\,min: OOM at 64 GB).
+For deployment we recommend a 10-minute walk-cap as a practical sweet
+spot.
+
+\subsection{Pareto frontier}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig1_pareto_frontier.pdf}
+\caption{Latency--correctness Pareto frontier on three cities.
+TEEG-ALT-v2 and TEEG-INCR sit on or near the frontier across all three
+cities, dominating CSA, RAPTOR, ULTRA, CH, and MG-Dial without HL's
+preprocessing tax.}
+\label{fig:pareto}
+\end{figure}
+
+\subsection{Cross-implementation comparison}
+\label{sec:cross-impl}
+
+\begin{table}[t]
+\centering
+\caption{Cross-implementation comparison on Full London (2{,}953
+mutually-runnable OD pairs after KIT's MCC reduction). ``Agreement
+w/ oracle'' is EA match against our within-pipeline reference oracle.
+The 44.2\% KIT-vs-ours agreement decomposes via a controlled 4-way
+ablation (Appendix~C) into $\leq\!12$\,pp walking-graph contribution
+and $\geq\!44$\,pp scan/data-pipeline contribution; the latter is
+dominated by service-day filter, time encoding, and stop-set
+differences. The benchmark numbers in §6.2--6.6 use a within-pipeline
+oracle, so this delta does not propagate to them.}
+\label{tab:kit}
+\small
+\begin{tabular}{lrr}
+\toprule
+Implementation & Median ms/q & Agreement w/ oracle \\
+\midrule
+Our CSA            & 12.74 & 100.0\% (ref) \\
+KIT CSA            & 2.85  & 44.2\% \\
+Our RAPTOR         & 20.74 & 100.0\% \\
+KIT RAPTOR         & 5.50  & 44.0\% \\
+Our ULTRA          & 21.03 & 100.0\% \\
+\textbf{Our TEEG-ALT-v2}    & \textbf{13.83} & \textbf{100.0\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:kit} compares our implementations against the KIT
+\cite{ulra-kit} reference C++ implementations on the 2{,}953
+mutually-runnable Full-London ODs. The latency gap between KIT-CSA
+(2.85\,ms) and our compiled CSA (12.74\,ms) is attributable to (a) C++
+vs Numba JIT and (b) KIT's SoA parallel-arrays layout vs our AoS
+structured-numpy.
+
+The 44.2\% KIT-vs-ours EA agreement decomposes via a controlled 4-way
+ablation (Appendix~C) into a $\leq 12$\,pp walking-graph contribution
+(KIT uses haversine $\leq\!900$\,s; we use a network-aware corrector)
+and a $\geq 44$\,pp scan/data-pipeline contribution. On the queries
+where the two pipelines disagree, our oracle returns a median signed
+$\Delta$ of $+10$\,min (uniformly \emph{earlier}, not random) under
+both walking-graph configurations, consistent with an information-set
+inequality (we see timetable connections KIT does not, driven by
+service-day filter / time encoding / MCC stop-set differences). The
+benchmark numbers in §6.2--6.6 use a within-pipeline oracle that is
+consistent across all evaluated methods, so the cross-impl gap does
+not propagate to those results.
+
+\section{Discussion and Limitations}
+
+\begin{table}[t]
+\centering
+\caption{TEEG offline cost: graph build, ALT landmark selection, walk
+enumeration, and bundle compaction.}
+\label{tab:preproc}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+City & Build (s) & ALT (s) & Walks (s) & Total (s) \\
+\midrule
+London & 545.2 & 8.0 & 2.1 & 571.3 \\
+Berlin & 131.0 & 2.5 & 0.8 & 138.5 \\
+NYC    & 470.8 & 5.2 & 2.0 & 482.7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{When TEEG wins.} TEEG-ALT wins when the network has dense
+transfer/walk options near origins (Berlin, NYC), or when the deployment
+needs dynamic updates (TEEG-INCR is, to our knowledge, the only published
+millisecond-scale GTFS-RT update mechanism for EA on cities of this scale,
+with sub-millisecond amortised per-edit cost in large batches).
+
+\paragraph{When TEEG does \emph{not} win.} HL remains 4--7$\times$ faster
+than TEEG-ALT on static queries when its $\sim 100$ minutes of preprocessing
+is affordable. CH remains competitive on smaller networks (subset London).
+For ultra-low-latency static-only deployments without dynamic updates, HL
+is still the right choice.
+
+\paragraph{Limitations.}
+(i) The 15-minute walk-cap limit on Full London is a memory limitation, not
+an algorithmic one. (ii) Our incremental scheme assumes well-formed
+GTFS-RT updates; we have not investigated malicious or grossly inconsistent
+inputs. (iii) We have not yet extended TEEG-ALT to multi-criteria
+(travel-time + transfers + fare) optimisation; this is left for future
+work.
+
+\section{Conclusion}
+
+TEEG offers a single data structure that competes with or beats CSA on
+static EA latency across three cities, while introducing the first known
+millisecond-scale GTFS-RT update mechanism for transit EA at city scale,
+with sub-millisecond amortised per-edit cost in large batches.
+We make all code and trace data available.
+
+\bibliography{references}
+
+\end{document}

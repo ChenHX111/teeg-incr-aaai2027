@@ -1,0 +1,86 @@
+{
+  "description": "Single trip T1 09:00-09:05 A->B. F_15 has A->B walk 7 min. Cancel T1.",
+  "edit": {
+    "edits": [
+      {
+        "edit_type": "CANCELLATION",
+        "trip_id": "T1"
+      }
+    ],
+    "intensity": 1,
+    "scenario": "CANCELLATION",
+    "seed": 1
+  },
+  "expected_post_edit": {
+    "queries": [
+      {
+        "dst": 1,
+        "expected_arrival": 7,
+        "note": "T1 cancelled; walk fallback 7 min",
+        "q_id": 1,
+        "src": 0,
+        "t_dep": 0
+      }
+    ]
+  },
+  "fixture_id": "F03",
+  "footpaths": [
+    {
+      "from_stop_int": 0,
+      "to_stop_int": 1,
+      "walk_min": 7
+    },
+    {
+      "from_stop_int": 1,
+      "to_stop_int": 0,
+      "walk_min": 7
+    }
+  ],
+  "routes": [
+    {
+      "mode": "bus",
+      "route_id": "R1",
+      "route_int": 0
+    }
+  ],
+  "service_window": {
+    "t_hi": 60,
+    "t_lo": 0
+  },
+  "stops": [
+    {
+      "stop_id": "A",
+      "stop_int": 0,
+      "stop_lat": 51.5,
+      "stop_lon": -0.1
+    },
+    {
+      "stop_id": "B",
+      "stop_int": 1,
+      "stop_lat": 51.51,
+      "stop_lon": -0.1
+    }
+  ],
+  "trips": [
+    {
+      "route_id": "R1",
+      "stop_times": [
+        {
+          "arrival_minute": -1,
+          "departure_minute": 0,
+          "stop_id": "A",
+          "stop_int": 0,
+          "stop_sequence": 0
+        },
+        {
+          "arrival_minute": 5,
+          "departure_minute": 5,
+          "stop_id": "B",
+          "stop_int": 1,
+          "stop_sequence": 1
+        }
+      ],
+      "trip_id": "T1"
+    }
+  ]
+}
