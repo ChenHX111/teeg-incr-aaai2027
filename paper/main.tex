@@ -662,19 +662,21 @@ Structural correctness is the
 Table~S3 oracle (supplementary), which shows TEEG-INCR is
 \emph{exact} for $N \leq 10$.
 
-\paragraph{Real-trace validation (Phase E, planned).}
-The Cycle~10 edit stream uses synthetic random \textsc{cancel}/
-\textsc{delay}/\textsc{add} primitives drawn from each city's GTFS
-trip set, which is a worst-case-uniform distribution. To validate
-under the actual GTFS-RT distribution, we plan a 24-hour SIRI-VM +
-SIRI-SX capture from the TfL Unified API and the DfT Bus Open Data
-Service, then replay the captured edit stream through the same
-incremental update path. The capture harness
-(\texttt{Experiments/results/cycle\_9\_paper/phase\_e\_gtfs\_rt/}\allowbreak\texttt{phase\_e\_capture.py})
-and the replay scaffold (\texttt{phase\_e\_replay.py}) are in the
-anonymous code repo, pending API-key registration; this validation
-is in the AAAI version's revision plan rather than the
-first-submission scope.
+\paragraph{Real-trace validation (Phase E).}
+We capture 24h of TfL Unified API line-status (5 modes) plus DfT
+BODS SIRI-VM telemetry to extract the empirical distributional
+structure (per-line disruption rate, delay magnitudes, hourly
+clustering). Our static GTFS bundle is anchored to 2025-01-03
+($\sim\!17$ months older than current TfL real-time), so direct
+trip-id replay is infeasible---most live TripUpdates reference
+2026 trip\_ids that do not exist in our static feed. We use
+\emph{statistical-pattern transfer}: the captured distribution
+shape drives a synthetic edit stream whose trip\_ids are sampled
+from our 2025-01-03 bundle, preserving temporal pattern,
+operation mix, and delay magnitudes (Appendix~E for capture +
+extractor + replay scripts). What matters for stress-testing an
+incremental-update engine is distributional shape, not literal
+trip correspondence.
 
 \subsection{Walk-cap sensitivity}
 

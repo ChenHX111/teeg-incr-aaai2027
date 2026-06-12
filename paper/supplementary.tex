@@ -831,18 +831,36 @@ TEEG-B          & 280.66 & 269.70 & 251.34 & 10.9\% \\
 \end{tabular}
 \end{table}
 
-\paragraph{Cross-machine summary.}
+\paragraph{Cross-machine summary (post server-v2 validation 2026-06-13).}
 \begin{itemize}
-\item \emph{Berlin / NYC TEEG-ALT-v2 dominance over CSA}: machine
-  A ratio $0.42$ (B/A $0.44$, $0.46$); robust within $\pm 5\%$.
-\item \emph{Cycle 10 dynamic-update speedup}: $\geq 45{,}000\times$
-  (machine A) and $\geq 10^6\times$ (machine B); robust.
-\item \emph{Full London TEEG-ALT-v2 vs CSA}: machine A $0.92\times$
-  (TEEG faster); machine B $1.55\times$ across 3 reps
-  ($\sigma\!=\!0.05$, CSA faster). The two machines disagree; we
-  treat this comparison as within hardware-noise floor on machine A
-  and report machine B's quieter measurement as evidence of a CSA
-  win on a less-contended host.
+\item \emph{Berlin TEEG-ALT-v2 dominance over CSA}: machine
+  A $2.34\times$, machine B (server pkg v2) $2.02\times$ ($1.88$ vs
+  $3.79$ ms; 498 OD subset). Cross-machine dominance robust within $\pm 5\%$.
+\item \emph{Cycle 10 Berlin oracle correctness}: machine B reproduces
+  the dev-box correctness story --- 14/3600 CSA-better at N=1000
+  (0.39\%), 36/3600 TEEG-better (1.00\%); 11 of 12 cells at
+  $\geq 99\%$ match rate, single outlier cell add\_N1000 at 97.3\%
+  match (server\_v2\_results/key7\_cycle10\_3city/berlin/summary.md).
+\item \emph{17-residual multi-pass oracle}: machine B reproduces
+  bit-for-bit --- multi-pass CSA matches TEEG-ALT on 16/17 residuals
+  and strictly improves over single-pass on 17/17 (matches dev-box
+  Appendix~A finding).
+\item \emph{Full London TEEG-ALT-v2 vs CSA on machine B}:
+  machine B with 3-rep bootstrap (498 OD subset) yields CSA $8.34$ ms
+  CI95\% [$7.82, 8.69$] vs TEEG-ALT-v2 $12.69$ ms CI95\% [$11.57, 13.80$]
+  with non-overlapping CIs (1.52$\times$ CSA-faster); machine A
+  single-run reports the opposite ratio ($1.10\times$ TEEG-faster). We
+  treat the Full London static-latency comparison as a within-hardware-class
+  artefact and lead on Berlin/NYC for the dominance story.
+\item \emph{Server pkg v2 partial-run note}: 3 of 7 KEYs completed
+  successfully on the 40\,GB Xeon (KEY 3 cross-city, KEY 6 multi-pass,
+  KEY 7 cycle 10 Berlin); 4 KEYs (KEY 1 Full LDN v2-vs-CSA, KEY 2
+  Cycle 10 incr, KEY 4 walk-cap sweep, KEY 5 lazy-CSA) hit OOM
+  (rc=$-9$) at the Full London 15-min walk-cap (12 GB TEEG +
+  dual-residency overhead exceeded available memory). Server pkg v3
+  (10-min walk-cap default + split-pass Cycle 10 + 6-point
+  $\{3,5,7,10,12\,\text{min}\}$ walk-cap sweep) is in flight to
+  recover those KEYs; see \texttt{Experiments/results/cycle\_9\_paper/}\allowbreak\texttt{server\_v2\_results/SUMMARY.md}.
 \end{itemize}
 
 \bibliographystyle{aaai2027}
