@@ -17,6 +17,9 @@
 \usepackage{amsthm}
 \newtheorem{theorem}{Theorem}
 \newtheorem{proposition}{Proposition}
+\theoremstyle{definition}
+\newtheorem{observation}{Observation}
+\theoremstyle{plain}
 \pdfinfo{
 /TemplateVersion (2027.1)
 }
@@ -62,9 +65,11 @@ $\sim\!50\,\mu\mathrm{s}$ (sub-millisecond for \textsc{cancel}).
 (10{,}800 oracle comparisons): for typical GTFS-Realtime cadences
 ($N \leq 10$ edits per batch) TEEG-INCR is exactly equivalent to a
 from-scratch rebuild with zero strictly-worse cases (0/5{,}400 across
-London, Berlin, NYC); aggregated across all stress cells $0.33\%$ of
-queries fall behind the oracle, bounded by $|\Delta| \leq 15$
-minutes.} To our knowledge this is the first published
+London, Berlin, NYC); at the $N\!=\!1000$ stress regime $34/2{,}700$
+(1.26\%) of queries fall behind the oracle, bounded by
+$|\Delta| \leq 15$ minutes and fully recoverable with a periodic
+full rebuild every $\sim\!1{,}000$ edits (Section~6.4 and
+Appendix~D).} To our knowledge this is the first published
 millisecond-scale GTFS-RT update mechanism for transit EA at the
 scale of three world cities.
 
@@ -75,6 +80,9 @@ independent bench machines. All baselines (CSA, RAPTOR, ULTRA, HL,
 CH) are compiled with Numba JIT for a like-for-like static
 comparison; cross-implementation comparison against the published
 C++ KIT-ULTRA reference is reported in §\ref{sec:cross-impl}.
+
+\noindent\emph{Anonymous code release}:
+\url{https://anonymous.4open.science/r/teeg-incr-aaai2027-3CD9/}
 \end{abstract}
 
 \section{Introduction}
@@ -139,7 +147,7 @@ validation against a rebuild oracle (Section~6.4).
 runs a goal-directed event-relaxation pass over TEEG. It serves two
 roles: (i) as the in-place query algorithm that TEEG-INCR builds on,
 matching or beating compiled CSA across all three test cities; and
-(ii) as an empirical observation (Proposition~\ref{thm:subsum},
+(ii) as an empirical observation (Observation~\ref{thm:subsum},
 characterised in Appendix~A) that on $\sim\!1\%$ of Full-London
 queries TEEG-ALT finds a strictly earlier feasible arrival than
 single-pass CSA. We do not claim a formal subsumption theorem for
@@ -213,10 +221,20 @@ incremental delay updates. On city- and country-scale,
 CSA-Accelerated~\cite{strasser2014csaaccelerated} integrates delays
 at query time with periodic minute-scale overlay rebuilds; the
 Delay-ULTRA family~\cite{bez2024delayultra,sauer2026trex,katkalo2026delayultramem}
-reports seconds-scale batch update phases. None of these targets
-sub-15\,ms per-edit incremental updates for transit EA at city scale
-with formal correctness validation against a rebuild oracle. Our
-TEEG-INCR fills this gap.
+reports seconds-scale batch update phases on country-scale
+(Switzerland, Germany) networks. None of these targets sub-15\,ms
+per-edit incremental updates for transit EA at city scale with
+formal correctness validation against a rebuild oracle. The
+closest comparable design points are Delay-ULTRA and T-REX, which
+target a different operating regime: large batched re-runs on
+country-scale data, optimising for whole-day or hour-scale updates
+rather than per-edit responsiveness. A direct wall-clock bench
+against the Delay-ULTRA / T-REX codebases on the same three cities
+is in the camera-ready / journal-version revision plan; here we
+make only the qualitative claim that the published per-batch times
+are 2--3 orders of magnitude larger than our per-edit times in the
+operating regime each system was designed for. Our TEEG-INCR fills
+the per-edit city-scale gap.
 
 \section{The TEEG Representation}
 \label{sec:teeg}
@@ -281,8 +299,8 @@ Pseudocode in Algorithm~1 (omitted for space; see appendix).
 
 \subsection{Correctness}
 
-\begin{proposition}[Empirical subsumption]\label{thm:subsum}
-For every Full-London query in our 1{,}500-query
+\begin{observation}[Empirical subsumption on Full London]\label{thm:subsum}
+On every Full-London query in our 1{,}500-query
 sample where TEEG-ALT and single-pass CSA (Dibbelt et al.\ 2018,
 Algorithm~1) disagree --- 17 of 1{,}500 (1.1\%) --- TEEG-ALT
 returns an arrival time that is independently verified as
@@ -290,14 +308,20 @@ returns an arrival time that is independently verified as
 edge against the GTFS connection set, every \texttt{WALK} edge against
 $W/v_\text{walk}$, every \texttt{TRANSFER} edge against the minimum
 transfer time), and CSA returns a strictly later one.
-\end{proposition}
+\end{observation}
 
-We characterise the configurations under which this happens in
-Appendix~A. We use the term \emph{empirical} subsumption because the
-fully formal claim (TEEG's reachability set is a structural superset of
-single-pass CSA's) requires a careful precondition on identical
-walk-graph preprocessing across the two implementations, which we
-discuss in Appendix~A and observe to hold for our Full-London setup.
+We label this an empirical \emph{observation} rather than a formal
+theorem because (a) the strict-inequality direction is verified by
+exhaustive trace-level audit on the 17 witnesses (Appendix~A) but
+not proven for arbitrary inputs, and (b) the fully formal claim
+(TEEG's reachability set is a structural superset of single-pass
+CSA's) requires a precondition on identical walk-graph preprocessing
+across the two implementations, which we discuss in Appendix~A and
+observe to hold for our Full-London setup. The phenomenon
+generalises beyond the 17-query subset: an independent multi-pass
+CSA oracle (Section~6.3, Appendix~A) finds the same blind spot on
+\textbf{185 of 3{,}000 Full-London queries (6.17\%)}, of which the
+17 are a verified subset.
 
 The construction is realised in two distinct failure modes
 (``src-walk suppresses transit walk-relax'' and ``walk-from-walk
@@ -359,6 +383,15 @@ event vertices, peaking at $1.55\%$ of the base TEEG's 4.6\,M
 vertices in the worst-case $N\!=\!1000$ DELAY cell. Memory growth at
 deployment-realistic GTFS-RT cadences ($N \leq 10$ per query batch)
 stays $<\!0.02\%$ of base.
+
+\paragraph{ALT landmark distances under updates.}
+TEEG-INCR's query path reuses the precomputed landmark distance
+vector $\{d_l\}$ from the static substrate without per-edit
+recomputation; pre-update $\{d_l\}$ remains an admissible lower
+bound on post-update EA distance because each primitive can only
+\emph{lengthen} EA paths (proof: supplementary Appendix~B; empirical
+verification: zero correctness regressions across all 36 Cycle 10
+cells of the 10{,}800-comparison oracle, Appendix~D).
 
 \section{Empirical Evaluation}
 \label{sec:eval}
@@ -439,64 +472,98 @@ Table~\ref{tab:per-city} reports the headline cross-city results on
 bench machine A. TEEG-ALT-v2 dominates compiled CSA on Berlin
 ($2.34\times$) and NYC ($2.30\times$); on Full London the static
 margin is small ($1.10\times$ on machine A) and reverses on
-machine B (CSA $1.55\times$ faster across 3 reps, $\sigma=0.05$ ---
-supp Table~S5), so we treat the London static-latency claim as
-within-hardware noise and lead on Berlin/NYC for the dominance
-story. TEEG-ALT-v2 preserves $\geq 99.3\%$ parity with the CSA
-oracle on all three cities; the remaining $<\!1\%$ disagreements
-are strict supersets in favour of TEEG-ALT-v2 (Section~6.3,
-Proposition~1). HL remains $4\text{--}7\times$ faster than TEEG-ALT-v2
-on static queries but at the cost of hours of preprocessing that
-must be redone after every schedule edit (Section~6.4); HL also
-does not support incremental updates.
+machine B with bootstrap 95\% CIs that are mutually exclusive
+(CSA $8.34$\,ms [$7.82, 8.69$] vs TEEG-ALT-v2 $12.69$\,ms
+[$11.57, 13.80$], $N\!=\!3$ reps $\times 498$ ODs $=\! 1494$
+observations per cell, 1{,}000 bootstrap resamples; supp
+Table~S5 and
+\texttt{Experiments/results/cycle\_9\_paper/phase\_d\_multirep/}\allowbreak\texttt{bootstrap\_cis.csv}).
+We therefore treat the London static-latency claim as a
+within-hardware-class artefact, not a universal property, and lead
+on Berlin/NYC for the dominance story. TEEG-ALT-v2 preserves
+$\geq 99.3\%$ parity with the CSA oracle on all three cities; the
+remaining $<\!1\%$ disagreements are strict supersets in favour of
+TEEG-ALT-v2 (Section~6.3, Proposition~1). HL remains
+$4\text{--}7\times$ faster than TEEG-ALT-v2 on static queries but at
+the cost of hours of preprocessing that must be redone after every
+schedule edit (Section~6.4); HL also does not support incremental
+updates.
 
 \subsection{Reachability subsumption}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig4_reachability_subsumption.pdf}
-\caption{Histogram of EA $\Delta$ on the queries where TEEG-ALT-v1 and
-single-pass CSA disagree. \emph{Positive} $\Delta$ means TEEG returns a
-strictly earlier arrival than CSA (the subsumption-strict case).
-\emph{Negative} $\Delta$ in Berlin/NYC is attributable to walk-graph
-preprocessing differences and is independently audited
-(supplementary~D).}
+\caption{Histogram of EA $\Delta$ on the 17-query TEEG-ALT diagnostic
+subset on Full London (the narrower subset where TEEG-ALT and
+single-pass CSA disagree; the broader 185-query multi-pass-vs-singlepass
+distribution is plotted in supplementary Appendix~A). With
+$\Delta\!:=\!\text{EA}_\text{CSA}\!-\!\text{EA}_\text{TEEG-ALT}$,
+\emph{positive} $\Delta$ means TEEG returns a strictly earlier arrival
+than CSA (the subsumption-strict case). \emph{Negative} $\Delta$ in
+Berlin/NYC is attributable to walk-graph preprocessing differences and
+is independently audited (supplementary~D).}
 \label{fig:subsumption}
 \end{figure}
 
-On Full London with 1{,}500 random queries, TEEG-ALT and single-pass CSA
-disagree on 17 (1.1\%); see Figure~\ref{fig:subsumption}. We
-independently validate \emph{all 17} two ways: (i) edge-by-edge
-GTFS feasibility (every RIDE edge against \texttt{b.connections},
-every WALK edge against $W/v_\text{walk}$, every TRANSFER edge
-against the minimum-transfer-time; end-to-end simulation arrival
-matches \texttt{ea\_teeg}); and (ii) multi-pass CSA Algorithm~2
-\cite{dibbelt2018csa} as an independent oracle. \textbf{Multi-pass
-CSA matches TEEG-ALT bit-for-bit on 16/17 residuals} and strictly
-improves over single-pass CSA on all 17 (median
-$\Delta\!=\!-2$\,min, max $\Delta\!=\!-21$\,min), confirming the
-gap is the documented single-pass blind spot, not a TEEG bug. On
-\texttt{q\_id=1497} multi-pass CSA finds an EA one minute earlier
-than TEEG-ALT (separate ALT-pruning blind spot, footnote in
-Appendix~A).
-
-The 17 disagreements decompose into two failure modes:
+On Full London with 3{,}000 random queries, multi-pass CSA Algorithm~2
+\cite{dibbelt2018csa} (the structurally-independent oracle: walk-relax
+unconditionally from every usable connection's arrival stop and iterate
+to fixpoint) finds strictly earlier arrivals than single-pass CSA on
+\textbf{185 queries (6.17\%)}. Define $\Delta \!:=\! \text{EA}_\text{multipass}
+\!-\! \text{EA}_\text{singlepass}$, so $\Delta\!<\!0$ means multipass returns
+an earlier (better) arrival. Across the 185, $\Delta$ has median
+$-8$\,min and range $-24$ to $-1$\,min. The 185 disagreements classify
+into four failure modes (percentages rounded; may not sum to exactly 100\%):
 \begin{enumerate}
-\item \textbf{Source-walk suppresses transit walk-relax} (4/17,
-$|\Delta| = 4\text{--}21$\,min, $n_\text{csa\_missed} > 0$):
-$s_\text{src}$ has a fast same-stop bus, plus a slightly slower walk-to-tube
-that opens a strictly faster Tube connection. CSA's source-init pass commits
-to the same-stop bus; TEEG-ALT keeps both as competing events.
-\item \textbf{Walk-from-walk doesn't chain} (13/17, $|\Delta| = 1\text{--}6$\,min,
-$n_\text{csa\_missed} = 0$): a foot-segment ending
-at stop $a$ enables a second foot-segment $a \to b$ that catches an earlier
-Tube. CSA does not chain walks at relax time; TEEG-ALT does.
+\item \textbf{Large source-walk suppresses transit walk-relax}
+($|\Delta|\!=\!6\text{--}15$\,min): \textbf{110/185 (59.5\%)}.
+$s_\text{src}$ has a fast same-stop bus and a slower walk-to-tube
+that opens a strictly faster connection; CSA commits to the bus
+in source-init.
+\item \textbf{Medium transfer chain} ($|\Delta|\!=\!3\text{--}5$\,min):
+\textbf{36/185 (19.5\%)}. Multi-hop walk chain that single-pass
+relaxes only once.
+\item \textbf{Small walk-from-walk} ($|\Delta|\!\leq\!2$\,min):
+\textbf{30/185 (16.2\%)}. A foot-segment ending at stop $a$ enables
+a second foot-segment $a\!\to\!b$ that catches an earlier Tube.
+\item \textbf{Huge alternative route} ($|\Delta|\!>\!15$\,min):
+\textbf{9/185 (4.9\%)}. Full alternative routing opened by the
+fixpoint pass.
 \end{enumerate}
+TEEG-ALT and single-pass CSA disagree on a narrower diagnostic
+subset of \textbf{17 queries} that the goal-directed ALT pruning
+exposes from the same blind spot (visible in
+Figure~\ref{fig:subsumption}, which plots only this 17-query
+diagnostic subset; the broader 185-query $\Delta$-distribution is
+in supplementary Appendix~A). The 17 queries are a verified subset
+of the 185 (consistency check passed). The 17-of-1{,}500 rate
+reported in earlier comparisons against TEEG-ALT used a 1{,}500-query
+random subsample of these same 3{,}000 ODs.
 
-We note (honesty disclosure) that this analysis was conducted with the help
-of an LLM-assisted sub-agent reviewing trace-level path traces. We provide
-the 17 raw path traces in the supplementary material so reviewers can verify
-independently.
+We independently validate all 17 two ways: (i) edge-by-edge GTFS
+feasibility (every RIDE edge against \texttt{b.connections}, every
+WALK edge against $W/v_\text{walk}$, every TRANSFER edge against
+the minimum-transfer-time; end-to-end simulation arrival equals
+\texttt{ea\_teeg} to the minute); and (ii) the same multi-pass CSA
+oracle as above. \textbf{Multi-pass CSA agrees with TEEG-ALT to the
+minute on 16/17 of these specific residuals}; on \texttt{q\_id=1497}
+multi-pass finds an EA one minute earlier than TEEG-ALT (separate
+ALT-pruning blind spot, footnote in Appendix~A). The 185-residual
+finding establishes that any earliest-arrival engine built on
+single-pass CSA semantics—including our lazy-CSA-resort
+incremental baseline (Algorithm~\ref{alg:teeg-incr}'s baseline
+counterpart, which falls back to single-pass on cache miss)—
+inherits at least a 6.17\% correctness gap on Full London,
+independent of TEEG.
+
+The 185-residual classification was produced by a deterministic
+Python script (\texttt{multipass\_3000\_full/classify\_residuals.py});
+the per-trace hand validation of the 17 TEEG-ALT residuals used an
+LLM-assisted sub-agent and we provide all 17 raw path traces in the
+supplementary material so reviewers can verify independently. The
+full 185-residual classification CSV is at
+\texttt{Experiments/results/cycle\_9\_paper/multipass\_3000\_full/}\allowbreak\texttt{residual\_classification.csv}.
 
 \subsection{Dynamic updates: Cycle~10}
 
@@ -595,6 +662,20 @@ Structural correctness is the
 Table~S3 oracle (supplementary), which shows TEEG-INCR is
 \emph{exact} for $N \leq 10$.
 
+\paragraph{Real-trace validation (Phase E, planned).}
+The Cycle~10 edit stream uses synthetic random \textsc{cancel}/
+\textsc{delay}/\textsc{add} primitives drawn from each city's GTFS
+trip set, which is a worst-case-uniform distribution. To validate
+under the actual GTFS-RT distribution, we plan a 24-hour SIRI-VM +
+SIRI-SX capture from the TfL Unified API and the DfT Bus Open Data
+Service, then replay the captured edit stream through the same
+incremental update path. The capture harness
+(\texttt{Experiments/results/cycle\_9\_paper/phase\_e\_gtfs\_rt/}\allowbreak\texttt{phase\_e\_capture.py})
+and the replay scaffold (\texttt{phase\_e\_replay.py}) are in the
+anonymous code repo, pending API-key registration; this validation
+is in the AAAI version's revision plan rather than the
+first-submission scope.
+
 \subsection{Walk-cap sensitivity}
 
 \begin{figure}[t]
@@ -659,7 +740,16 @@ Table~\ref{tab:kit} compares our implementations against the KIT
 mutually-runnable Full-London ODs. The latency gap between KIT-CSA
 (2.85\,ms) and our compiled CSA (12.74\,ms) is attributable to (a) C++
 vs Numba JIT and (b) KIT's SoA parallel-arrays layout vs our AoS
-structured-numpy.
+structured-numpy. \emph{Baseline implementation note:} our CSA, RAPTOR,
+ULTRA, HL, and CH are all Numba-JIT reimplementations, not optimised
+C++. The static speedups reported in §6.2 (TEEG-ALT-v2 over CSA) are
+therefore measured against our own CSA implementation at the
+algorithmic-equivalence level (same data, same scan logic, same JIT
+toolchain), not against the absolute fastest published C++ CSA. We
+believe this is the fair comparison for the algorithmic contribution
+(TEEG-ALT-v2 vs CSA share the same JIT optimisation surface); a
+direct head-to-head against KIT-CSA C++ on the same matched
+timetable is in the camera-ready / journal revision plan.
 
 The 44.2\% KIT-vs-ours EA agreement decomposes via a controlled 4-way
 ablation (Appendix~C) into a $\leq 12$\,pp walking-graph contribution

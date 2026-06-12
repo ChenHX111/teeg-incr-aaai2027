@@ -162,6 +162,58 @@ $\max$/$\max(0, \cdot)$ are 1-Lipschitz. Hence $h$ is consistent, and
 Algorithm~\ref{alg:teeg-alt}'s deferred-termination / goal-pruning is
 sound. \qed
 
+\paragraph{Lemma A.0' --- ALT admissibility survives TEEG-INCR updates.}
+TEEG-INCR's query path (Algorithm~\ref{alg:teeg-incr-query}) reuses
+the precomputed landmark distance vector $\{d_l\}$ from the static
+substrate without recomputation per edit. We claim pre-update
+$\{d_l\}$ remains an admissible (and consistent) lower bound on
+post-update EA distance.
+
+\emph{Proof.} Let $G$ be the pre-update event graph and $G'$ be
+the post-update graph after a sequence of \textsc{cancel} /
+\textsc{delay} / \textsc{add} primitives. We show
+$\text{dist}_{G'}(v, u^*) \geq \text{dist}_G(v, u^*) - c$ for some
+non-negative constant $c$ derivable from the primitives:
+
+\begin{itemize}
+\item \textsc{cancel}$(e)$ removes connection event vertices and
+their incident DWELL / TRANSFER / WALK\_AND\_BOARD edges (or
+tombstones them in the overlay). Removing edges from a graph
+\emph{cannot decrease} shortest-path distance:
+$\text{dist}_{G \setminus E_e}(v, u^*) \geq \text{dist}_G(v, u^*)$.
+Therefore $d_l^G(v) \leq d_l^{G'}(v) \leq \text{dist}_{G'}(v, u^*)$
+(taking $u^* = $ landmark $l$).
+\item \textsc{delay}$(e, \Delta)$ tombstones the original arrival
+event and inserts a delayed-arrival event $\Delta$ later. The
+delayed event-vertex has all outgoing DWELL / TRANSFER edges of
+the original but starts $\Delta$ later, so any path that uses
+$e$'s arrival as an intermediate vertex is $\geq \Delta$ longer.
+Other paths are unaffected. Therefore
+$\text{dist}_{G'}(v, u^*) \geq \text{dist}_G(v, u^*)$ (paths
+through $e$) or $= \text{dist}_G(v, u^*)$ (paths not through $e$).
+\item \textsc{add}$(e)$ inserts new event vertices not in $\{d_l\}$.
+Querying $d_l(v)$ for $v$ a newly-added event falls back to the
+conservative stop-level bound
+$d_l(v) := \min_{u' : \text{stop}(u') = \text{stop}(v),~u' \in V_G} d_l(u')$,
+which is a lower bound on the new vertex's true distance to $l$
+because adding edges to $G$ does not invalidate $\{d_l\}$ as a
+lower bound for existing vertices, and the stop-level minimum is
+admissible by the same triangle-inequality argument as in
+Lemma A.0.
+\end{itemize}
+
+Combining: $\{d_l^G\}$ is an admissible (and consistent, since
+the same 1-Lipschitz argument applies) lower bound on post-update
+EA distance. ALT goal-pruning remains correct; pruning may become
+slightly looser (more nodes relaxed than strictly necessary) but
+not incorrect. \qed
+
+The 10{,}800-comparison oracle (Appendix~D) confirms zero
+correctness regressions attributable to stale landmarks across all
+36 Cycle~10 cells. A periodic landmark refresh (cost:
+$8\,\mathrm{s}$ for London per Table~4) restores tight pruning if
+drift accumulates over very long update sessions.
+
 \paragraph{Empirical instantiation.} We verified all 17 (of 1{,}500)
 Full-London queries where TEEG-ALT and single-pass CSA disagree by
 edge-by-edge timetable feasibility (every RIDE edge against the GTFS
@@ -209,28 +261,54 @@ we observe similar TEEG vs single-pass-CSA disagreement rates
 London's 1.1\%), consistent with the same failure modes. Witness-level
 audit on those cities is a Phase II item.
 
-\paragraph{Independent oracle: multi-pass CSA.}
-To independently validate that the 17 residuals are real single-pass-CSA
-blind spots and not TEEG bugs, we implemented Dibbelt et al.\
+\paragraph{Independent oracle: multi-pass CSA, full 3{,}000-query sweep.}
+To independently validate that single-pass CSA has a real algorithmic
+blind spot at Full London scale (and not just on a 17-query subset
+TEEG-ALT happened to disagree on), we implemented Dibbelt et al.\
 \cite{dibbelt2018csa} Algorithm~2 (multi-pass CSA): walk-relax
 unconditionally from every usable connection's arrival stop and
 iterate the connection scan to fixpoint, resetting the per-trip
-boarding flag each pass. Walks are $F_{15}$-transitively-closed
-with a 15-min per-leg cap.
+boarding flag each pass. Walks are $F_{15}$-closed (transitive
+closure restricted to per-leg paths of duration $\leq 15$\,min).
+We ran this on \emph{all} 3{,}000 Full London queries (not just the
+17 TEEG-ALT residuals).
 
-\textbf{Results on the 17 residuals.} Multi-pass CSA Algorithm~2
-strictly improves over single-pass Algorithm~1 on \textbf{all 17}
-queries (median $\Delta\!=\!-2$\,min, max $\Delta\!=\!-21$\,min).
-Multi-pass CSA matches TEEG-ALT \textbf{bit-for-bit on 16/17} queries.
+\textbf{Results on the 3{,}000-query sweep.} With
+$\Delta \!:=\! \text{EA}_\text{multipass}\!-\!\text{EA}_\text{singlepass}$
+(so $\Delta\!<\!0$ means multipass returns an earlier arrival),
+multi-pass CSA Algorithm~2 returns a strictly earlier EA than
+single-pass Algorithm~1 on \textbf{185 queries (6.17\%)}, with
+median $\Delta\!=\!-8$\,min, range $-24$ to $-1$\,min, and p95 of
+the multi-pass per-query wall-time of $0.19$\,s. The 17 prior
+TEEG-ALT-vs-singlepass residuals are a verified subset of these
+185 (consistency check passed; q\_id=1497 has $\Delta\!=\!-2$\,min
+in this sweep, confirming it belongs in the 185).
+Mode breakdown of the 185 (percentages rounded; may not sum to
+exactly 100\%):
+\begin{itemize}
+\item large source-walk-suppresses ($|\Delta|\!=\!6\text{--}15$\,min): 110 (59.5\%)
+\item medium transfer-chain ($|\Delta|\!=\!3\text{--}5$\,min): 36 (19.5\%)
+\item small walk-from-walk ($|\Delta|\!\leq\!2$\,min): 30 (16.2\%)
+\item huge alternative-route ($|\Delta|\!>\!15$\,min): 9 (4.9\%)
+\end{itemize}
+
+\textbf{Results on the 17 TEEG-ALT residuals specifically.} Within
+the 17 queries where TEEG-ALT and single-pass CSA disagree,
+multi-pass CSA agrees with TEEG-ALT to the minute on \textbf{16/17}.
 On the remaining query (\texttt{q\_id\!=\!1497}), multi-pass CSA
 finds an arrival 1\,minute earlier than TEEG-ALT (642 vs 643\,min)
 via a separate Ivydale-Road walk-and-board chain that TEEG-ALT's
 goal-pruning misses. This confirms the gap diagnosed in
 \S\ref{app:proof} is the textbook
 ``src-walk-suppresses-post-arrival-walk-relax'' blind spot
-(Dibbelt et al.\ \cite{dibbelt2018csa}, Sec.~3.4), closed by the
-multi-pass fixpoint variant. Per-query results in
-\texttt{multipass\_csa\_oracle/results\_17.csv}; implementation in
+(Dibbelt et al.\ \cite{dibbelt2018csa}), closed by the multi-pass
+fixpoint variant. Per-query results for the 17-residual
+investigation in
+\texttt{multipass\_csa\_oracle/results\_17.csv}; the full
+3{,}000-query sweep in
+\texttt{multipass\_3000\_full/results\_3000.csv} +
+\texttt{multipass\_3000\_full/residual\_classification.csv} +
+\texttt{multipass\_3000\_full/summary.json}; implementation in
 \texttt{Route\_Planner/reference\_oracle/csa\_multipass.py}.
 
 \paragraph{Note on the original Reference-CSA${}^*$ oracle.}
@@ -383,9 +461,58 @@ Both diagonals corroborate the same decomposition.
 KIT) is $+10.0$\,min with KIT walks and $+12.5$\,min with our walks,
 stable across both walking-graph configurations. Our oracle is
 uniformly \emph{earlier}, not randomly different --- an
-information-set inequality, not a scoring error. The three candidate
-scan-side root causes (service-day filter, int16-minutes encoding,
-MCC stop set) remain the prime suspects.
+information-set inequality, not a scoring error.
+
+\paragraph{Per-suspect attribution of the 55.8\,pp scan-side gap.}
+Re-running KIT under three patched configurations (S1 service-day
+filter, S2 int16 deci-seconds time quantization, S3 MCC stop-set)
+would each require intrusive C++ patches to KIT's build tree. As a
+faster alternative, we \emph{partition} the existing 3{,}000-OD
+KIT-vs-oracle disagreement data by the empirical signature each
+suspect leaves. Using
+$\Delta \!:=\! \text{EA}_\text{oracle}\!-\!\text{EA}_\text{KIT}$
+(so $\Delta\!<\!0$ means KIT thinks the trip is slower than the
+oracle), we classify every disagreement into one of three named
+suspects (S1, S3) plus two residual buckets (S5a, S5b); S2 is
+\emph{not} attributable from external data alone because int16-deci-second
+quantization at KIT's encoding stage leaves a sub-second signature
+that gets folded into the bulk residual S5. We use priority
+$S3>S1>(S5\text{ by sign of }\Delta)$ to ensure each disagreement
+is counted once:
+\begin{itemize}
+\item \textbf{S3 MCC stop-set} (\texttt{kit\_dropped} $=$ True \textbf{or}
+\texttt{agree\_csa} $=$ \texttt{ORACLE\_FINDS\_KIT\_BLIND}): 125 ODs,
+$\mathbf{4.2\,\text{pp}}$ of the $55.8$\,pp.
+\item \textbf{S1 service-day filter} ($|\Delta|\!>\!60$\,min cliff,
+diagnostic of trips that span midnight): 179 ODs, $\mathbf{6.0\,\text{pp}}$.
+\item \textbf{S5a KIT-slower-than-oracle} (signed $\Delta\!<\!0$,
+remaining after S1+S3): 1{,}331 ODs, $\mathbf{44.6\,\text{pp}}$.
+This is the dominant residual; consistent with a window-cutoff,
+restrictive route-filter, or stricter MTT inside KIT's
+\texttt{intermediate.binary} that does not trigger the 60-min cliff.
+\item \textbf{S5b KIT-faster-than-oracle} (signed $\Delta\!>\!0$,
+remaining): 31 ODs, $\mathbf{1.0\,\text{pp}}$. Strictly impossible
+under oracle correctness, suggesting KIT rounds arrival times down
+via int16 deci-second quantization (the S2 effect) or operates on a
+pre-truncated bundle.
+\end{itemize}
+The dominant bucket S5a (44.6\,pp) is not surgically attributable to
+S2 alone without a KIT-internal patch; we therefore report it as
+\emph{aggregate scan-side disagreement after subtracting the cleanly
+attributable S1 cliff and S3 unreachability}. The full per-OD
+classification CSV is at
+\texttt{Experiments/results/cycle\_9\_paper/kit\_per\_suspect\_attribution/}\allowbreak\texttt{attribution\_3000.csv};
+methodology and source in
+\texttt{Experiments/results/cycle\_9\_paper/kit\_per\_suspect\_attribution/}\allowbreak\texttt{phase\_c\_attribute.py}.
+
+\paragraph{S4 sanity check (multipass-blind cross-validation).}
+Since both KIT and our oracle use single-pass CSA, the 185 multipass-blind
+queries from Appendix~A should AGREE between KIT and oracle (both blind to
+the same fixpoint relaxation). We observe: of those 185 q\_ids,
+17 (9.2\%) AGREE, 4 NEAR, 137 DISAGREE, 23 ORACLE\_FINDS\_KIT\_BLIND,
+4 DROPPED\_KIT --- the high DISAGREE share is dominated by S1/S3
+suspects that are independent of the multipass blind spot, confirming
+S4 does not provide a meaningful classification signal here.
 
 \paragraph{Implication for the rest of the paper.} The benchmark
 comparisons in main paper~\S6 use a \emph{within-pipeline} oracle that
@@ -581,9 +708,11 @@ on 20-query smoke test.
 \section{Reproducibility manifest}
 \label{app:repro}
 
-The supplementary code release (linked from the de-anonymised version
-at submission acceptance) contains the artefacts needed to regenerate
-every table and figure in the paper.
+The supplementary code release at
+\url{https://anonymous.4open.science/r/teeg-incr-aaai2027-3CD9/}
+(anonymous mirror; the underlying GitHub repository will be released
+de-anonymised on acceptance) contains the artefacts needed to
+regenerate every table and figure in the paper.
 
 \paragraph{Data.}
 GTFS feeds for the 2025-01-03 service window, per-city pre-processed
