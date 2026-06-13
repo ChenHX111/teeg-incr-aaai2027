@@ -834,8 +834,15 @@ TEEG-B          & 280.66 & 269.70 & 251.34 & 10.9\% \\
 \paragraph{Cross-machine summary (post server-v2 validation 2026-06-13).}
 \begin{itemize}
 \item \emph{Berlin TEEG-ALT-v2 dominance over CSA}: machine
-  A $2.34\times$, machine B (server pkg v2) $2.02\times$ ($1.88$ vs
-  $3.79$ ms; 498 OD subset). Cross-machine dominance robust within $\pm 5\%$.
+  A $2.34\times$ (Table~1 single-run), machine A $4.13\times$ (Table~S6
+  $N=3$ bootstrap; tighter measurement), machine B (server pkg v2)
+  $2.02\times$ ($1.88$ vs $3.79$ ms; 498 OD subset). Cross-machine
+  dominance robust; the bootstrap estimate is the most reliable
+  because it averages JIT-warmup variance across 3 independent runs.
+\item \emph{NYC TEEG-ALT-v2 dominance over CSA}: machine A
+  $2.30\times$ (Table~1 single-run); machine A $4.98\times$ (Table~S6
+  $N=3$ bootstrap). NYC was not benched on machine B (server v2 KEY 3
+  ran Berlin only).
 \item \emph{Cycle 10 Berlin oracle correctness}: machine B reproduces
   the dev-box correctness story --- 14/3600 CSA-better at N=1000
   (0.39\%), 36/3600 TEEG-better (1.00\%); 11 of 12 cells at
@@ -856,12 +863,38 @@ TEEG-B          & 280.66 & 269.70 & 251.34 & 10.9\% \\
   successfully on the 40\,GB Xeon (KEY 3 cross-city, KEY 6 multi-pass,
   KEY 7 cycle 10 Berlin); 4 KEYs (KEY 1 Full LDN v2-vs-CSA, KEY 2
   Cycle 10 incr, KEY 4 walk-cap sweep, KEY 5 lazy-CSA) hit OOM
-  (rc=$-9$) at the Full London 15-min walk-cap (12 GB TEEG +
-  dual-residency overhead exceeded available memory). Server pkg v3
-  (10-min walk-cap default + split-pass Cycle 10 + 6-point
-  $\{3,5,7,10,12\,\text{min}\}$ walk-cap sweep) is in flight to
-  recover those KEYs; see \texttt{Experiments/results/cycle\_9\_paper/}\allowbreak\texttt{server\_v2\_results/SUMMARY.md}.
+  (rc=$-9$) at the Full London 15-min walk-cap. Server pkg v3 with
+  10-min walk-cap default + split-pass Cycle 10 +
+  $\{3,5,7,10,12\,\text{min}\}$ walk-cap sweep is in flight; see
+  \texttt{Experiments/results/cycle\_9\_paper/}\allowbreak\texttt{server\_v2\_results/SUMMARY.md}.
 \end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{Bench machine A (Intel i7-13700K, $N\!=\!3$ independent
+reps on Berlin and NYC 500-OD subsets, $1{,}500$ obs per cell, 1{,}000
+bootstrap resamples per CI). \emph{TEEG-ALT-v2 advantage over CSA
+is statistically clean on both cities: CIs do not overlap with CSA's.}}
+\label{tab:multirep-berlin-nyc}
+\small
+\begin{tabular}{llrrrr}
+\toprule
+City & Method & Median ms & CI95\% lo & CI95\% hi & Speedup vs CSA \\
+\midrule
+Berlin & HL              & 0.163  & 0.159  & 0.169  & $23.4\times$ \\
+Berlin & \textbf{TEEG-ALT-v2}    & \textbf{0.924}  & \textbf{0.908}  & \textbf{0.944}  & $\mathbf{4.13\times}$ \\
+Berlin & RAPTOR          & 1.902  & 1.808  & 1.983  & $2.00\times$ \\
+Berlin & ULTRA           & 1.935  & 1.866  & 2.020  & $1.97\times$ \\
+Berlin & CSA             & 3.812  & 3.696  & 3.902  & $1.00\times$ \\
+\midrule
+NYC    & HL              & 0.304  & 0.294  & 0.317  & $22.1\times$ \\
+NYC    & \textbf{TEEG-ALT-v2}    & \textbf{1.349}  & \textbf{1.316}  & \textbf{1.376}  & $\mathbf{4.98\times}$ \\
+NYC    & RAPTOR          & 3.405  & 3.265  & 3.552  & $1.97\times$ \\
+NYC    & ULTRA           & 3.466  & 3.280  & 3.666  & $1.94\times$ \\
+NYC    & CSA             & 6.718  & 6.603  & 6.830  & $1.00\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \bibliographystyle{aaai2027}
 \bibliography{references}

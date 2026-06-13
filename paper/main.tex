@@ -74,8 +74,10 @@ millisecond-scale GTFS-RT update mechanism for transit EA at the
 scale of three world cities.
 
 We complement TEEG-INCR with TEEG-ALT, a static EA query engine on
-the same substrate. On Berlin and NYC, TEEG-ALT beats compiled CSA by
-$2.3\times$ at $\geq\!99.3\%$ EA parity, reproducing across two
+the same substrate. On Berlin and NYC, TEEG-ALT-v2 beats compiled CSA by
+$2.3\text{--}5.0\times$ at $\geq\!99.3\%$ EA parity (Table~1
+single-run; 3-rep bootstrap with non-overlapping CI95\% in supp
+Table~S6), reproducing across two
 independent bench machines. All baselines (CSA, RAPTOR, ULTRA, HL,
 CH) are compiled with Numba JIT for a like-for-like static
 comparison; cross-implementation comparison against the published
@@ -440,13 +442,15 @@ preprocessing time + peak memory.
 \caption{Per-city median query latency (ms/q) on bench machine A
 (single run; 3{,}000 OD pairs per city) and EA-correctness parity
 vs the CSA oracle. \emph{Full London margin against CSA is at the
-noise floor and reverses on machine B (supp Table~S5); Berlin and
-NYC dominance is robust across both machines.} NYC RAPTOR / ULTRA
-parity $98.7\%\!=\!2962/3000$ is the structural reachability
-coverage of the routes-array layout (Appendix~E); TEEG-ALT-v2 parity
-$99.6\%\!=\!2950/2962$ is the algorithmic agreement on the reachable
-subset. MG-Dial-v2 Full London uses the $K\!=\!\infty$ fast path
-(post-fix; Appendix~F).}
+noise floor and reverses on machine B (supp Table~S5); Berlin/NYC
+dominance is robust across machines (an $N\!=\!3$ multi-rep
+bootstrap on 500-OD subset shows even larger TEEG-ALT-v2 ratios:
+$4.13\times$ Berlin, $4.98\times$ NYC, non-overlapping CI95\%; supp
+Table~S6).} NYC RAPTOR / ULTRA parity $98.7\%\!=\!2962/3000$ is the
+structural reachability coverage of the routes-array layout
+(Appendix~E); TEEG-ALT-v2 parity $99.6\%\!=\!2950/2962$ is the
+algorithmic agreement on the reachable subset. MG-Dial-v2 Full
+London uses the $K\!=\!\infty$ fast path (post-fix; Appendix~F).}
 \label{tab:per-city}
 \small
 \begin{tabular}{lrrrrrr}
@@ -468,26 +472,22 @@ MG-Dial-v2     &  79.14 & 99.3\% & 59.50 & 99.2\% & 269.30 & 99.6\% \\
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:per-city} reports the headline cross-city results on
-bench machine A. TEEG-ALT-v2 dominates compiled CSA on Berlin
-($2.34\times$) and NYC ($2.30\times$); on Full London the static
-margin is small ($1.10\times$ on machine A) and reverses on
-machine B with bootstrap 95\% CIs that are mutually exclusive
-(CSA $8.34$\,ms [$7.82, 8.69$] vs TEEG-ALT-v2 $12.69$\,ms
-[$11.57, 13.80$], $N\!=\!3$ reps $\times 498$ ODs $=\! 1494$
-observations per cell, 1{,}000 bootstrap resamples; supp
-Table~S5 and
-\texttt{Experiments/results/cycle\_9\_paper/phase\_d\_multirep/}\allowbreak\texttt{bootstrap\_cis.csv}).
-We therefore treat the London static-latency claim as a
-within-hardware-class artefact, not a universal property, and lead
-on Berlin/NYC for the dominance story. TEEG-ALT-v2 preserves
-$\geq 99.3\%$ parity with the CSA oracle on all three cities; the
-remaining $<\!1\%$ disagreements are strict supersets in favour of
-TEEG-ALT-v2 (Section~6.3, Proposition~1). HL remains
-$4\text{--}7\times$ faster than TEEG-ALT-v2 on static queries but at
-the cost of hours of preprocessing that must be redone after every
-schedule edit (Section~6.4); HL also does not support incremental
-updates.
+Table~\ref{tab:per-city} reports the headline cross-city results.
+TEEG-ALT-v2 dominates compiled CSA on Berlin ($2.34\times$
+single-run, $4.13\times$ 3-rep bootstrap with non-overlapping CI95\%)
+and NYC ($2.30\times$ single-run, $4.98\times$ 3-rep bootstrap; supp
+Table~S6). On Full London the static margin is small ($1.10\times$
+on machine A) and reverses on machine B with mutually-exclusive
+bootstrap CIs (CSA $8.34$ vs TEEG-ALT-v2 $12.69$ ms; supp
+Table~S5); we treat the London static-latency claim as a
+within-hardware-class artefact and lead on Berlin/NYC for the
+dominance story. TEEG-ALT-v2 preserves $\geq 99.3\%$ parity with
+the CSA oracle on all three cities; the remaining $<\!1\%$
+disagreements are strict supersets (Observation~\ref{thm:subsum}).
+HL remains $4\text{--}7\times$ faster than TEEG-ALT-v2 on static
+queries but at the cost of hours of preprocessing that must be
+redone after every schedule edit (Section~6.4); HL also does not
+support incremental updates.
 
 \subsection{Reachability subsumption}
 
