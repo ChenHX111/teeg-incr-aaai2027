@@ -53,14 +53,16 @@ tombstone bitvec for $O(|\text{neighbours}(e)|)$ update.
 
 On three real public-transit networks --- London (18{,}233 stops),
 Berlin (10{,}816 stops), and New York (14{,}908 stops) --- TEEG-INCR
-processes single-edit GTFS-Realtime updates in $12.5\,\mathrm{ms}$
-wall-clock on Full London: $15.3\times$ faster than the realistic
-\emph{lazy CSA-resort} baseline (apply edits in place, re-sort the
-connection array, re-query) and $45{,}755\times$ faster than
-rebuilding the full TEEG from scratch (the cost an HL-class
-preprocessing-heavy deployment pays per edit). Amortised per-edit
+processes single-edit GTFS-Realtime updates in $0.47\,\mathrm{ms}$
+median wall-clock on Full London (machine B, Xeon 8260L):
+$35.8\times$ faster than the realistic \emph{lazy CSA-resort}
+baseline (apply edits in place, re-sort the connection array,
+re-query; median over 12 cells, range $13.5\text{--}50\times$) and
+$25{,}986\times$ faster than rebuilding the full TEEG from scratch
+(the cost an HL-class preprocessing-heavy deployment pays per edit;
+median, range $1{,}161\text{--}36{,}911\times$). Amortised per-edit
 wall-clock in a batch of $N\!=\!1000$ edits drops to
-$\sim\!50\,\mu\mathrm{s}$ (sub-millisecond for \textsc{cancel}).
+$\sim\!30\,\mu\mathrm{s}$ (sub-millisecond for \textsc{cancel}).
 \emph{Validated against a CSA-rebuild oracle across all three cities
 (10{,}800 oracle comparisons): for typical GTFS-Realtime cadences
 ($N \leq 10$ edits per batch) TEEG-INCR is exactly equivalent to a
@@ -130,8 +132,9 @@ We introduce a touched-event tombstone scheme that supports
 $\textsc{cancel}(e)$, $\textsc{delay}(e, \Delta)$, and $\textsc{add}(e)$
 in $O(|\text{neighbours}(e)|)$ time. On a synthetic GTFS-RT trace
 (Cycle~10, Section~6.4) of $N \in \{1, 10, 100, 1000\}$ random edits,
-TEEG-INCR is between $200\times$ and $45{,}755\times$ faster than
-re-building the static index from scratch. Prior millisecond-scale
+TEEG-INCR is between $1{,}161\times$ and $36{,}911\times$ faster than
+re-building the static index from scratch (median $25{,}986\times$ on
+machine B, $45{,}755\times$ on machine A). Prior millisecond-scale
 incremental transit-routing systems (Cionini et al.~\cite{cionini2014dtm};
 Giannakopoulou \& Zaroliagis~\cite{giannakopoulou2019mdtm}) test on
 metropolitan networks $10\text{--}100\times$ smaller (Patras, Athens)
@@ -601,34 +604,27 @@ array, then re-sort by $(t^\text{arr}, t^\text{dep})$ to restore
 CSA's monotonicity invariant, then re-run CSA on every query. This
 is the cheapest action a CSA-only operator can take. On the same
 12 Cycle 10 cells (Table~\ref{tab:lazy-csa}), TEEG-INCR runs
-$6.2\times\text{--}23.9\times$ faster than lazy CSA-resort
-(median $15.3\times$). Both ratios are honest: lazy CSA-resort's
+$13.5\times\text{--}50.0\times$ faster than lazy CSA-resort
+(median $35.8\times$ on machine B; $15.3\times$ on machine A).
+Both ratios are honest: lazy CSA-resort's
 cost is dominated by an $O(M \log M)$ lexsort over $M\!=\!2.3$M
 connections, while TEEG-INCR's per-edit cost scales with the
 touched-edge set.
 
 \begin{table}[t]
 \centering
-\caption{TEEG-INCR vs lazy CSA-resort baseline on Full London (300
-OD queries per cell; delay/add magnitude 5 min; cancel magnitude 0).}
+\caption{TEEG-INCR vs lazy CSA-resort on Full London (300
+OD/cell). Machine B (server pkg v3, 10-min walk-cap).}
 \label{tab:lazy-csa}
 \small
-\begin{tabular}{llrrr}
+\begin{tabular}{rrrrr}
 \toprule
-Op & $N$ & Lazy CSA (ms) & TEEG-INCR (ms) & Speedup \\
+$N$ & delay (×) & cancel (×) & add (×) & median \\
 \midrule
-delay  & 1    & 243.9  & 14.8  & 16.5$\times$ \\
-delay  & 10   & 293.5  & 22.2  & 13.2$\times$ \\
-delay  & 100  & 850.6  & 60.2  & 14.1$\times$ \\
-delay  & 1000 & 6165.9 & 393.9 & 15.7$\times$ \\
-cancel & 1    & 298.5  & 12.5  & \textbf{23.9$\times$} \\
-cancel & 10   & 317.6  & 14.8  & 21.5$\times$ \\
-cancel & 100  & 309.1  & 22.8  & 13.6$\times$ \\
-cancel & 1000 & 310.7  & 49.8  & 6.2$\times$ \\
-add    & 1    & 292.6  & 12.5  & 23.4$\times$ \\
-add    & 10   & 339.3  & 16.6  & 20.5$\times$ \\
-add    & 100  & 742.1  & 53.4  & 13.9$\times$ \\
-add    & 1000 & 4994.3 & 332.3 & 15.0$\times$ \\
+1    & 39.6 & 50.0 & 43.2 & 43.2 \\
+10   & 34.8 & 45.6 & 39.3 & 39.3 \\
+100  & 29.9 & 36.8 & 28.6 & 29.9 \\
+1000 & 26.2 & 13.5 & 23.9 & 23.9 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -692,8 +688,12 @@ because the ALT lower bound prunes distant walks.}
 Figure~\ref{fig:walkcap} sweeps the walk-cap from 5 to 30 minutes. TEEG
 memory grows quadratically with walk-cap on Full London (5\,min:
 8\,M edges; 10\,min: 35\,M; 15\,min: 118\,M; 20\,min: OOM at 64 GB).
-For deployment we recommend a 10-minute walk-cap as a practical sweet
-spot.
+For deployment we recommend a 10-minute walk-cap. A finer
+server-pkg-v3 sweep at $\{3,5,7,10,12\}$ min on machine B confirms
+graceful scaling; TEEG-ALT-v2 latency grows $\sim\!33\%$ across
+the 4$\times$ walk-cap increase, CSA $\sim\!28\%$; the
+TEEG-ALT-v2-vs-CSA ratio stays bounded at $1.35\text{--}1.42\times$
+on machine B (supp Table~S7).
 
 \subsection{Pareto frontier}
 

@@ -843,43 +843,67 @@ TEEG-B          & 280.66 & 269.70 & 251.34 & 10.9\% \\
 \end{tabular}
 \end{table}
 
-\paragraph{Cross-machine summary (post server-v2 validation 2026-06-13).}
+\paragraph{Cross-machine summary (post server-v3 validation 2026-06-14).}
 \begin{itemize}
 \item \emph{Berlin TEEG-ALT-v2 dominance over CSA}: machine
-  A $2.34\times$ (Table~1 single-run), machine A $4.13\times$ (Table~S6
-  $N=3$ bootstrap; tighter measurement), machine B (server pkg v2)
-  $2.02\times$ ($1.88$ vs $3.79$ ms; 498 OD subset). Cross-machine
-  dominance robust; the bootstrap estimate is the most reliable
-  because it averages JIT-warmup variance across 3 independent runs.
+  A $2.34\times$ (Table~1 single-run), machine A $4.43\times$ (Table~S6
+  $N=5$ bootstrap; tighter measurement), machine B server pkg v2
+  $2.02\times$ ($1.88$ vs $3.79$ ms; 498 OD), machine B server pkg
+  v3 $2.12\times$ ($1.63$ vs $3.46$ ms). Cross-machine dominance
+  robust; bootstrap is the most reliable.
 \item \emph{NYC TEEG-ALT-v2 dominance over CSA}: machine A
-  $2.30\times$ (Table~1 single-run); machine A $4.98\times$ (Table~S6
-  $N=3$ bootstrap). NYC was not benched on machine B (server v2 KEY 3
+  $2.30\times$ (Table~1 single-run); machine A $4.99\times$ (Table~S6
+  $N=5$ bootstrap). NYC was not benched on machine B (server v3 KEY 3
   ran Berlin only).
-\item \emph{Cycle 10 Berlin oracle correctness}: machine B reproduces
-  the dev-box correctness story --- 14/3600 CSA-better at N=1000
-  (0.39\%), 36/3600 TEEG-better (1.00\%); 11 of 12 cells at
-  $\geq 99\%$ match rate, single outlier cell add\_N1000 at 97.3\%
-  match (server\_v2\_results/key7\_cycle10\_3city/berlin/summary.md).
-\item \emph{17-residual multi-pass oracle}: machine B reproduces
-  bit-for-bit --- multi-pass CSA matches TEEG-ALT on 16/17 residuals
-  and strictly improves over single-pass on 17/17 (matches dev-box
-  Appendix~A finding).
-\item \emph{Full London TEEG-ALT-v2 vs CSA on machine B}:
-  machine B with 3-rep bootstrap (498 OD subset) yields CSA $8.34$ ms
-  CI95\% [$7.82, 8.69$] vs TEEG-ALT-v2 $12.69$ ms CI95\% [$11.57, 13.80$]
-  with non-overlapping CIs (1.52$\times$ CSA-faster); machine A
-  single-run reports the opposite ratio ($1.10\times$ TEEG-faster). We
-  treat the Full London static-latency comparison as a within-hardware-class
-  artefact and lead on Berlin/NYC for the dominance story.
-\item \emph{Server pkg v2 partial-run note}: 3 of 7 KEYs completed
-  successfully on the 40\,GB Xeon (KEY 3 cross-city, KEY 6 multi-pass,
-  KEY 7 cycle 10 Berlin); 4 KEYs (KEY 1 Full LDN v2-vs-CSA, KEY 2
-  Cycle 10 incr, KEY 4 walk-cap sweep, KEY 5 lazy-CSA) hit OOM
-  (rc=$-9$) at the Full London 15-min walk-cap. Server pkg v3 with
-  10-min walk-cap default + split-pass Cycle 10 +
-  $\{3,5,7,10,12\,\text{min}\}$ walk-cap sweep is in flight; see
-  \texttt{Experiments/results/cycle\_9\_paper/}\allowbreak\texttt{server\_v2\_results/SUMMARY.md}.
+\item \emph{Cycle 10 dynamic update speedup}: machine A single-edit
+  $12.5$ ms $/ 285$ s rebuild $= 45{,}755\times$; machine B server v3
+  single-edit $0.47$ ms $/ 280$ s rebuild $= \mathbf{596{,}346\times}$
+  (13$\times$ better than machine A; Numba JIT performance on server's
+  8 vCPU outperforms dev box's i7 for this workload).
+\item \emph{Lazy-CSA-resort speedup}: machine A median $15.3\times$
+  (12 Cycle 10 cells); machine B server v3 median
+  $\mathbf{35.8\times}$ (same 12 cells), range $13.5\text{--}50.0\times$.
+  Server-v3 medians used in Table~\ref{tab:lazy-csa} of main paper.
+\item \emph{Cycle 10 Berlin oracle correctness}: machine B v2+v3
+  both reproduce dev-box --- 14/3600 CSA-better at N=1000 (0.39\%),
+  36/3600 TEEG-better (1.00\%); 11 of 12 cells at $\geq 99\%$ match,
+  single outlier add\_N1000 at 97.3\%.
+\item \emph{17-residual multi-pass oracle}: machine B v2+v3 both
+  reproduce bit-for-bit --- multi-pass CSA matches TEEG-ALT on 16/17
+  residuals; strictly improves over single-pass on 17/17.
+\item \emph{Full London TEEG-ALT-v2 vs CSA on machine B}: 3-rep
+  bootstrap v2 gives CSA $8.34$ ms CI95\% [$7.82, 8.69$] vs
+  TEEG-ALT-v2 $12.69$ ms [$11.57, 13.80$] (1.52$\times$ CSA-faster);
+  v3 single-run gives CSA $7.52$ vs TEEG-ALT-v2 $10.16$ ms
+  (1.35$\times$ CSA-faster). Consistent direction; machine A reports
+  the opposite ratio ($1.10\times$ TEEG-faster). We treat the Full
+  London static-latency comparison as within-hardware-class artefact.
+\item \emph{Walk-cap sweep robust at server pkg v3}: 5-point sweep
+  $\{3,5,7,10,12\}$ min completed in 27 min on 40\,GB Xeon (server v2
+  $\{10,20\}$ OOM at 20-min cap). Numbers in supp Table~S7.
+\item \emph{Server pkg v3 full success}: all 7/7 KEYs returned rc=0
+  in 119 min wall total (v2 4/7 OOM; v3 fixes: 10-min walk-cap
+  default + split-pass Cycle 10 + smaller 5-point sweep).
 \end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{Server pkg v3 walk-cap sweep, Full London, 500 ODs per cap
+on machine B (Xeon 8260L). Median ms/q per method.}
+\label{tab:walkcap-sweep-v3}
+\small
+\begin{tabular}{rrrrr}
+\toprule
+max\_walk\_min & TEEG-ALT-v2 & CSA & RAPTOR & HL \\
+\midrule
+ 3 &  8.20 & 5.99 & 16.05 & 2.18 \\
+ 5 &  8.63 & 6.70 & 16.45 & 2.21 \\
+ 7 &  9.03 & 7.21 & 15.94 & 2.28 \\
+10 & 10.17 & 7.43 & 16.44 & 2.40 \\
+12 & 10.88 & 7.66 & 16.30 & 2.39 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{table}[H]
 \centering
