@@ -871,8 +871,8 @@ TEEG-B          & 280.66 & 269.70 & 251.34 & 10.9\% \\
 
 \begin{table}[H]
 \centering
-\caption{Bench machine A (Intel i7-13700K, $N\!=\!3$ independent
-reps on Berlin and NYC 500-OD subsets, $1{,}500$ obs per cell, 1{,}000
+\caption{Bench machine A (Intel i7-13700K, $N\!=\!5$ independent
+reps on Berlin and NYC 500-OD subsets, $2{,}500$ obs per cell, 1{,}000
 bootstrap resamples per CI). \emph{TEEG-ALT-v2 advantage over CSA
 is statistically clean on both cities: CIs do not overlap with CSA's.}}
 \label{tab:multirep-berlin-nyc}
@@ -881,17 +881,17 @@ is statistically clean on both cities: CIs do not overlap with CSA's.}}
 \toprule
 City & Method & Median ms & CI95\% lo & CI95\% hi & Speedup vs CSA \\
 \midrule
-Berlin & HL              & 0.163  & 0.159  & 0.169  & $23.4\times$ \\
-Berlin & \textbf{TEEG-ALT-v2}    & \textbf{0.924}  & \textbf{0.908}  & \textbf{0.944}  & $\mathbf{4.13\times}$ \\
-Berlin & RAPTOR          & 1.902  & 1.808  & 1.983  & $2.00\times$ \\
-Berlin & ULTRA           & 1.935  & 1.866  & 2.020  & $1.97\times$ \\
-Berlin & CSA             & 3.812  & 3.696  & 3.902  & $1.00\times$ \\
+Berlin & HL              & 0.163  & 0.160  & 0.166  & $23.4\times$ \\
+Berlin & \textbf{TEEG-ALT-v2}    & \textbf{0.862}  & \textbf{0.849}  & \textbf{0.874}  & $\mathbf{4.43\times}$ \\
+Berlin & RAPTOR          & 1.856  & 1.803  & 1.930  & $2.06\times$ \\
+Berlin & ULTRA           & 1.927  & 1.858  & 1.978  & $1.98\times$ \\
+Berlin & CSA             & 3.821  & 3.711  & 3.914  & $1.00\times$ \\
 \midrule
-NYC    & HL              & 0.304  & 0.294  & 0.317  & $22.1\times$ \\
-NYC    & \textbf{TEEG-ALT-v2}    & \textbf{1.349}  & \textbf{1.316}  & \textbf{1.376}  & $\mathbf{4.98\times}$ \\
-NYC    & RAPTOR          & 3.405  & 3.265  & 3.552  & $1.97\times$ \\
-NYC    & ULTRA           & 3.466  & 3.280  & 3.666  & $1.94\times$ \\
-NYC    & CSA             & 6.718  & 6.603  & 6.830  & $1.00\times$ \\
+NYC    & HL              & 0.314  & 0.307  & 0.324  & $22.0\times$ \\
+NYC    & \textbf{TEEG-ALT-v2}    & \textbf{1.381}  & \textbf{1.356}  & \textbf{1.401}  & $\mathbf{4.99\times}$ \\
+NYC    & RAPTOR          & 3.541  & 3.434  & 3.649  & $1.95\times$ \\
+NYC    & ULTRA           & 3.647  & 3.525  & 3.765  & $1.89\times$ \\
+NYC    & CSA             & 6.896  & 6.792  & 6.977  & $1.00\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}
