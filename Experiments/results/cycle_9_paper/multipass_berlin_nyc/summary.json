@@ -1,0 +1,24 @@
+[
+  {
+    "city": "berlin",
+    "n_queries": 500,
+    "n_disagree": 3,
+    "disagree_rate_pct": 0.6,
+    "delta_mean": -6.333333333333333,
+    "delta_median": -2.0,
+    "delta_min": -16,
+    "delta_max": -1,
+    "sweep_wall_s": 268.73
+  },
+  {
+    "city": "nyc",
+    "n_queries": 500,
+    "n_disagree": 6,
+    "disagree_rate_pct": 1.2,
+    "delta_mean": -3.8333333333333335,
+    "delta_median": -2.5,
+    "delta_min": -9,
+    "delta_max": -1,
+    "sweep_wall_s": 484.85
+  }
+]

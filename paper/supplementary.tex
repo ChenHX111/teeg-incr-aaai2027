@@ -292,6 +292,18 @@ exactly 100\%):
 \item huge alternative-route ($|\Delta|\!>\!15$\,min): 9 (4.9\%)
 \end{itemize}
 
+\paragraph{Cross-city multi-pass-CSA blind-spot rates.}
+To check whether the 6.17\,\% rate is a Full-London artefact, we ran
+the same multi-pass oracle on 500-OD subsets of Berlin and NYC.
+Berlin: \textbf{3/500 = 0.6\,\%} (median $\Delta\!=\!-2$\,min, range
+$-1$ to $-16$\,min). NYC: \textbf{6/500 = 1.2\,\%} (median
+$\Delta\!=\!-2.5$\,min, range $-1$ to $-9$\,min). The phenomenon is
+general but rate varies sharply with transit-topology density:
+London (12.2 walks/stop, dense overlapping tube+bus) has $5\text{--}10\times$
+the blind-spot rate of Berlin (9.0 walks/stop) and NYC (16.5
+walks/stop). Per-query results in
+\texttt{Experiments/results/cycle\_9\_paper/multipass\_berlin\_nyc/}\allowbreak\texttt{summary.json}.
+
 \textbf{Results on the 17 TEEG-ALT residuals specifically.} Within
 the 17 queries where TEEG-ALT and single-pass CSA disagree,
 multi-pass CSA agrees with TEEG-ALT to the minute on \textbf{16/17}.
