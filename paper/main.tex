@@ -659,20 +659,20 @@ Table~S3 oracle (supplementary), which shows TEEG-INCR is
 \emph{exact} for $N \leq 10$.
 
 \paragraph{Real-trace validation (Phase E).}
-We capture 24h of TfL Unified API line-status (5 modes) plus DfT
-BODS SIRI-VM telemetry to extract the empirical distributional
-structure (per-line disruption rate, delay magnitudes, hourly
-clustering). Our static GTFS bundle is anchored to 2025-01-03
-($\sim\!17$ months older than current TfL real-time), so direct
-trip-id replay is infeasible---most live TripUpdates reference
-2026 trip\_ids that do not exist in our static feed. We use
-\emph{statistical-pattern transfer}: the captured distribution
-shape drives a synthetic edit stream whose trip\_ids are sampled
-from our 2025-01-03 bundle, preserving temporal pattern,
-operation mix, and delay magnitudes (Appendix~E for capture +
-extractor + replay scripts). What matters for stress-testing an
-incremental-update engine is distributional shape, not literal
-trip correspondence.
+We captured 24h of TfL line-status (5 modes; 1{,}428 snapshots
+over 695 lines) + DfT BODS SIRI-VM (1{,}399 frames, 1.6M
+vehicle-snapshots; 2026-06-13). Our static bundle is 2025-01-03
+($\sim\!17$ months stale), so direct trip-id replay is infeasible.
+We use \emph{statistical-pattern transfer}: captured distribution
+drives a 1{,}000-edit synthetic stream against our 2025 bundle,
+preserving operation mix (74\% delay / 20\% cancel / 6\% add),
+rush-hour weighting ($\sim\!9\times$ peak), and delay magnitudes
+(mean 4.6, median 3, p95 12 min). Our Cycle 10 synthetic-uniform
+distribution at $N\!=\!1000$ per batch is \emph{strictly more
+aggressive} than this real distribution (real peaks
+$\sim\!99$ edits/h $\ll\!1000$/batch), so Table~\ref{tab:lazy-csa}'s
+$35.8\times$ lazy-CSA-resort speedup is a \emph{lower bound} on
+real-world performance. Scripts + capture in supp Appendix~E.
 
 \subsection{Walk-cap sensitivity}
 
